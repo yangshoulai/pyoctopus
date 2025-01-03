@@ -38,15 +38,15 @@ class SqliteStore(Store):
                 if self._exists(r.id):
                     _cursor.execute(
                         f'UPDATE {self._table} SET url = ?, method = ?, priority = ?, repeatable = ?, parent = ?, data = ?, queries = ?, headers = ?, attrs = ?, state = ?, depth = ?, msg = ? WHERE id = ?',
-                        (r.url, r.method, r.priority, r.repeatable, r.parent, r.data, json.dumps(r.queries),
-                         json.dumps(r.headers), json.dumps(r.attrs), State.WAITING.value, r.depth, r.msg, r.id,))
+                        (r.url, r.method, r.priority, r.repeatable, r.parent, r.data, json.dumps(r.queries, ensure_ascii=True),
+                         json.dumps(r.headers, ensure_ascii=True), json.dumps(r.attrs, ensure_ascii=True), State.WAITING.value, r.depth, r.msg, r.id,))
                     _connection.commit()
                 else:
                     _cursor.execute(
                         f'INSERT INTO {self._table} (id, url, method, priority, repeatable, parent, data, queries, headers, attrs, state, depth, msg) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-                        (r.id, r.url, r.method, r.priority, r.repeatable, r.parent, r.data, json.dumps(r.queries),
-                         json.dumps(r.headers),
-                         json.dumps(r.attrs),
+                        (r.id, r.url, r.method, r.priority, r.repeatable, r.parent, r.data, json.dumps(r.queries, ensure_ascii=True),
+                         json.dumps(r.headers, ensure_ascii=True),
+                         json.dumps(r.attrs, ensure_ascii=True),
                          r.state.value, r.depth, r.msg))
                     _connection.commit()
                 return True
