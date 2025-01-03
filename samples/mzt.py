@@ -8,7 +8,7 @@ from Crypto.Util.Padding import unpad
 
 from pyoctopus import selector, converter, processor, matcher, site, limiter, new, Request, Response
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 
 
 @selector.hyperlink(
@@ -72,4 +72,5 @@ if __name__ == '__main__':
         (matcher.url_matcher(r'.*/app/post/p\?id=(\d+)'), decode_mzt_image_response),
         (matcher.IMAGE, processor.downloader(os.path.expanduser('~/Downloads/mzt'), sub_dir_attr='name'))
     ]
-    new(processors=processors, sites=sites, threads=1).start(seed)
+    octopus = new(processors=processors, sites=sites, threads=1)
+    octopus.start(seed)

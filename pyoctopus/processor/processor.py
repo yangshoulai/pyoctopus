@@ -1,7 +1,4 @@
-from typing import Callable, TypeVar
-
-from ..reqeust import Request
-from ..response import Response
+from typing import TypeVar
 
 R = TypeVar('R', bound=[type])
 

@@ -27,6 +27,11 @@ class Response:
         self._parsed = True
         return self._text
 
+    def __str__(self):
+        return f'{{request={self.request}, status={self.status}, length={len(self.content)}, encoding={self.encoding}}}'
+
+    __repr__ = __str__
+
 
 def new(request: Request,
         status: int = 0,

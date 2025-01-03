@@ -3,7 +3,7 @@ from abc import abstractmethod
 from typing import List
 
 from .. import Request
-from ..converter import Converter
+from ..types import Converter
 from ..types import R
 
 PROP_LINKS = '__result_links__'

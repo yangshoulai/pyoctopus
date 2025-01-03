@@ -1,5 +1,5 @@
 from .selector import Selector
-from ..converter import Converter
+from ..types import Converter
 
 
 class Regex(Selector):

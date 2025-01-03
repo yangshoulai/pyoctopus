@@ -9,11 +9,11 @@ from urllib.parse import urljoin, urlencode, parse_qs, urlparse
 
 import requests
 
-from .types import Processor, Matcher
 from .reqeust import Request
 from .response import Response
 from .site import Site
 from .store import Store, memory_store
+from .types import Processor, Matcher
 
 _HEADER_COOKIE = 'Cookie'
 _HEADER_REFERER = 'Referer'
@@ -95,12 +95,11 @@ class Octopus:
     def stop(self):
         if not self._set_state(State.STOPPING, State.STARTED):
             raise RuntimeError("Octopus is not in INIT state")
-        logging.info("wait for tasks in the queue to complete")
         wait([self._boss_future, *self._workers_futures], return_when=ALL_COMPLETED)
         self._boss.shutdown()
         self._workers.shutdown()
         self._state = State.STOPPED
-        logging.info("octopus stopped")
+        logging.info("Octopus stopped")
 
     def add(self, r: Request, p: Request = None) -> None:
         with self._lock:
@@ -114,19 +113,9 @@ class Octopus:
                     r.headers[_HEADER_REFERER] = m.group(1)
             if not r.url.startswith('http'):
                 r.url = urljoin(p.url, r.url)
-
-        if not r.url:
-            raise ValueError("Request url is empty")
-        if not r.url.startswith("http"):
-            raise ValueError("Request url must start with http")
-        if r.method != 'GET' and r.method != 'POST':
-            raise ValueError("Request method is not GET or POST")
-
         r.id = _generate_request_id(r)
-        if not self._store.put(r):
-            logging.debug(f"put store failed, maybe [{r}] has been visited")
-        else:
-            logging.debug(f"put store success, [{r}]")
+        if not self._store.put(r) and not r.repeatable:
+            logging.debug(f"Can not put [{r}] to store, maybe it has been visited")
 
     @property
     def state(self):
@@ -147,30 +136,37 @@ class Octopus:
                 if len(self._workers_futures) == 0:
                     threading.Thread(target=self.stop).start()
 
+        if self._state.value > State.STARTED.value:
+            self._log_undone_tasks()
+
     def _process(self, r: Request):
+        global res
         try:
             site = self._get_site(urlparse(r.url).hostname)
             if site.limiter is not None:
                 site.limiter.acquire()
             res = Octopus._download(r, site)
             if res.status != 200:
-                raise ValueError("bad http status [%s] for [%s]", res.status, r)
+                raise ValueError("Bad http status [%s] for [%s]", res.status, r)
             for [m, p] in self._processors:
                 if m(res):
                     new_requests = p(res)
                     for req in new_requests:
                         if self._state.value < State.STOPPING.value:
                             self.add(req, r)
-        except BaseException:
-            logging.error("process error for [%s]", r, exc_info=True)
+        except BaseException as e:
+            logging.exception(f"Process [req = {r}, resp = {res}] error")
         finally:
             self._semaphore.release()
+
+        if self._state.value > State.STARTED.value:
+            self._log_undone_tasks()
 
     def _set_state(self, new_state: State, expected_state: State) -> bool:
         with self._lock:
             if self._state == expected_state:
                 self._state = new_state
-                logging.debug(f"octopus state changed from {expected_state} to {new_state}")
+                logging.debug(f"Octopus state changed from {expected_state} to {new_state}")
                 return True
             else:
                 return False
@@ -186,12 +182,12 @@ class Octopus:
             }
         r = requests.request(request.method, request.url, params=request.queries, data=request.data,
                              headers=h, proxies=p)
-        res = Response(request)
-        res.status = r.status_code
-        res.content = r.content
-        res.headers = {k: v for k, v in r.headers.items()}
-        res.encoding = r.encoding
-        return res
+        _res = Response(request)
+        _res.status = r.status_code
+        _res.content = r.content
+        _res.headers = {k: v for k, v in r.headers.items()}
+        _res.encoding = r.encoding
+        return _res
 
     def _get_site(self, host: str) -> Site:
         if host in self._sites:
@@ -200,6 +196,11 @@ class Octopus:
             if re.match(h.replace("*", ".*"), host):
                 return s
         return Site(host)
+
+    def _log_undone_tasks(self):
+        undone_count = len([x for x in [self._boss_future, *self._workers_futures] if not x.done()])
+        if undone_count > 0:
+            logging.info(f"Wait for {undone_count} tasks in the queue to complete")
 
 
 def new(store: Store = None,

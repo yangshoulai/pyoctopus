@@ -10,6 +10,12 @@ class Request:
                  priority: int = 0,
                  repeatable: bool = True,
                  attrs: dict[str, Any] = None):
+        if not url:
+            raise ValueError('url is empty')
+        if not method:
+            raise ValueError('method is empty')
+        if method not in ('GET', 'POST'):
+            raise ValueError('method can only be GET or POST')
         self.url = url
         self.method = method
         self.queries = {} if queries is None else queries
