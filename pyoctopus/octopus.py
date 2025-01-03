@@ -35,9 +35,11 @@ def _generate_request_id(r: Request) -> str:
             q.extend(v if v else [])
             q = sorted(q)
             existing_params[k] = q
-    url = parsed_url._replace(query=urlencode(sorted(existing_params.items()), doseq=True)).geturl()
+    url = parsed_url._replace(query=urlencode(
+        sorted(existing_params.items()), doseq=True)).geturl()
     if r.data:
-        url += '&' + r.data
+        url = f'{url}&{r.data}'
+    url = f'{r.method}{url}'
     md5 = hashlib.md5()
     md5.update(url.encode('utf-8'))
     return md5.hexdigest()
@@ -66,7 +68,8 @@ class Octopus:
         if sites:
             self._sites = {s.host: s for s in sites}
         self._lock = threading.Lock()
-        self._semaphore = threading.Semaphore(self._queue_factor * self._threads)
+        self._semaphore = threading.Semaphore(
+            self._queue_factor * self._threads)
         self._workers = None
         self._workers_futures = []
         self._boss = None
@@ -78,7 +81,8 @@ class Octopus:
         if not self._set_state(State.STARTING, State.INIT):
             raise RuntimeError("Octopus is not in INIT state")
         if seeds:
-            self._seeds.extend([Request(s) if isinstance(s, str) else s for s in seeds])
+            self._seeds.extend(
+                [Request(s) if isinstance(s, str) else s for s in seeds])
         self._state = State.STARTING
         for s in self._seeds:
             self.add(s)
@@ -95,7 +99,8 @@ class Octopus:
     def stop(self):
         if not self._set_state(State.STOPPING, State.STARTED):
             raise RuntimeError("Octopus is not in INIT state")
-        wait([self._boss_future, *self._workers_futures], return_when=ALL_COMPLETED)
+        wait([self._boss_future, *self._workers_futures],
+             return_when=ALL_COMPLETED)
         self._boss.shutdown()
         self._workers.shutdown()
         self._state = State.STOPPED
@@ -107,6 +112,7 @@ class Octopus:
                 raise RuntimeError("Octopus is not in STARTED state")
         if p is not None:
             r.parent = p.id
+            r.depth = p.depth + 1
             if r.headers.get(_HEADER_REFERER, None) is None:
                 m = _REGEX_REFERER.match(p.url)
                 if m is not None:
@@ -115,8 +121,10 @@ class Octopus:
                 r.url = urljoin(p.url, r.url)
         r.id = _generate_request_id(r)
         r.state = RequestState.WAITING
+        r.msg = '等待处理'
         if not self._store.put(r) and not r.repeatable:
-            logging.debug(f"Can not put [{r}] to store, maybe it has been visited")
+            logging.debug(
+                f"Can not put [{r}] to store, maybe it has been visited")
 
     @property
     def state(self):
@@ -128,11 +136,13 @@ class Octopus:
             with self._lock:
                 if self._state.value >= State.STOPPING.value:
                     break
-            self._workers_futures = [f for f in self._workers_futures if not f.done()]
+            self._workers_futures = [
+                f for f in self._workers_futures if not f.done()]
             r = self._store.get()
             if r is not None:
                 self._semaphore.acquire()
-                self._workers_futures.append(self._workers.submit(self._process, r))
+                self._workers_futures.append(
+                    self._workers.submit(self._process, r))
             else:
                 if len(self._workers_futures) == 0:
                     threading.Thread(target=self.stop).start()
@@ -148,16 +158,17 @@ class Octopus:
                 site.limiter.acquire()
             res = Octopus._download(r, site)
             if res.status != 200:
-                raise ValueError("Bad http status [%s] for [%s]", res.status, r)
+                raise ValueError(
+                    "Bad http status [%s] for [%s]", res.status, r)
             for [m, p] in self._processors:
                 if m(res):
                     new_requests = p(res)
                     for req in new_requests:
                         if self._state.value < State.STOPPING.value:
                             self.add(req, r)
-            self._store.update_state(r, RequestState.COMPLETED)
-        except BaseException:
-            self._store.update_state(r, RequestState.FAILED)
+            self._store.update_state(r, RequestState.COMPLETED, '成功处理')
+        except BaseException as e:
+            self._store.update_state(r, RequestState.FAILED, str(e))
             logging.exception(f"Process [req = {r}, resp = {res}] error")
         finally:
             self._semaphore.release()
@@ -169,7 +180,8 @@ class Octopus:
         with self._lock:
             if self._state == expected_state:
                 self._state = new_state
-                logging.debug(f"Octopus state changed from {expected_state} to {new_state}")
+                logging.debug(
+                    f"Octopus state changed from {expected_state} to {new_state}")
                 return True
             else:
                 return False
@@ -201,9 +213,11 @@ class Octopus:
         return Site(host)
 
     def _log_undone_tasks(self):
-        undone_count = len([x for x in [self._boss_future, *self._workers_futures] if not x.done()])
+        undone_count = len(
+            [x for x in [self._boss_future, *self._workers_futures] if not x.done()])
         if undone_count > 0:
-            logging.info(f"Wait for {undone_count} tasks in the queue to complete")
+            logging.info(
+                f"Wait for {undone_count} tasks in the queue to complete")
 
 
 def new(store: Store = None,

@@ -34,7 +34,8 @@ class _MemoryStore(Store):
         except queue.Empty:
             return None
 
-    def update_state(self, r: Request, state: State):
+    def update_state(self, r: Request, state: State, msg: str = None):
+        r.msg = msg
         r.state = state
 
 

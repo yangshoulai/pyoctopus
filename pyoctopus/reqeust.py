@@ -36,6 +36,8 @@ class Request:
         self.parent = None
         self.id = None
         self.state = State.NEW
+        self.depth = 1
+        self.msg = None
 
     def get_attr(self, name):
         return self.attrs.get(name, None)

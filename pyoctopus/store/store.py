@@ -14,5 +14,5 @@ class Store:
         pass
 
     @abstractmethod
-    def update_state(self, r: Request, state: State):
+    def update_state(self, r: Request, state: State, msg: str = None):
         pass

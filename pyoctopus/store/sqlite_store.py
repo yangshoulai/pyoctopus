@@ -17,7 +17,9 @@ CREATE TABLE IF NOT EXISTS {} (
 		queries TEXT,
 		headers TEXT,
 		attrs TEXT,
-		state TEXT
+		state TEXT,
+        depth INTEGER,
+        msg TEXT
 )
 '''
 
@@ -35,17 +37,17 @@ class SqliteStore(Store):
                 _cursor = _connection.cursor()
                 if self._exists(r.id):
                     _cursor.execute(
-                        f'UPDATE {self._table} SET url = ?, method = ?, priority = ?, repeatable = ?, parent = ?, data = ?, queries = ?, headers = ?, attrs = ?, state = ? WHERE id = ?',
+                        f'UPDATE {self._table} SET url = ?, method = ?, priority = ?, repeatable = ?, parent = ?, data = ?, queries = ?, headers = ?, attrs = ?, state = ?, depth = ?, msg = ? WHERE id = ?',
                         (r.url, r.method, r.priority, r.repeatable, r.parent, r.data, json.dumps(r.queries),
-                         json.dumps(r.headers), json.dumps(r.attrs), State.WAITING.value, r.id,))
+                         json.dumps(r.headers), json.dumps(r.attrs), State.WAITING.value, r.depth, r.msg, r.id,))
                     _connection.commit()
                 else:
                     _cursor.execute(
-                        f'INSERT INTO {self._table} (id, url, method, priority, repeatable, parent, data, queries, headers, attrs, state) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                        f'INSERT INTO {self._table} (id, url, method, priority, repeatable, parent, data, queries, headers, attrs, state, depth, msg) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
                         (r.id, r.url, r.method, r.priority, r.repeatable, r.parent, r.data, json.dumps(r.queries),
                          json.dumps(r.headers),
                          json.dumps(r.attrs),
-                         r.state.value))
+                         r.state.value, r.depth, r.msg))
                     _connection.commit()
                 return True
             except sqlite3.Error as e:
@@ -57,7 +59,7 @@ class SqliteStore(Store):
             try:
                 _cursor = _connection.cursor()
                 _cursor.execute(
-                    f'SELECT id, url, method, priority, repeatable, parent, data, queries, headers, attrs FROM {self._table} WHERE state = ? ORDER BY priority DESC LIMIT 1',
+                    f'SELECT id, url, method, priority, repeatable, parent, data, queries, headers, attrs, state, depth, msg FROM {self._table} WHERE state = ? ORDER BY priority DESC LIMIT 1',
                     (State.WAITING.value,))
                 row = _cursor.fetchone()
                 if row is not None:
@@ -69,7 +71,11 @@ class SqliteStore(Store):
                                 attrs=json.loads(row[9]))
                     r.id = row[0]
                     r.parent = row[5]
-                    _cursor.execute(f'UPDATE {self._table} SET state = ? WHERE id = ?', (State.EXECUTING.value, r.id,))
+                    r.state = State(row[10])
+                    r.depth = row[11]
+                    r.msg = row[12]
+                    _cursor.execute(
+                        f'UPDATE {self._table} SET state = ?, msg = ? WHERE id = ?', (State.EXECUTING.value, '正在处理', r.id,))
                     _connection.commit()
                     return r
                 return None
@@ -78,12 +84,14 @@ class SqliteStore(Store):
                 _connection.rollback()
                 return None
 
-    def update_state(self, r: Request, state: State):
+    def update_state(self, r: Request, state: State, msg: str = None):
         r.state = state
+        r.msg = msg
         with sqlite3.connect(self._db) as _connection:
             try:
                 _cursor = _connection.cursor()
-                _cursor.execute(f'UPDATE {self._table} SET state = ? WHERE id = ?', (state.value, r.id,))
+                _cursor.execute(
+                    f'UPDATE {self._table} SET state = ?, msg = ? WHERE id = ?', (state.value, msg, r.id,))
                 _connection.commit()
             except sqlite3.Error:
                 logging.exception(f"Update [{r}] state failed")
@@ -93,7 +101,8 @@ class SqliteStore(Store):
         with sqlite3.connect(self._db) as _connection:
             try:
                 _cursor = _connection.cursor()
-                _cursor.execute(f'SELECT count(1) FROM {self._table} WHERE id = ?', (id,))
+                _cursor.execute(
+                    f'SELECT count(1) FROM {self._table} WHERE id = ?', (id,))
                 row = _cursor.fetchone()
                 return row[0] > 0
             except sqlite3.Error:
@@ -104,9 +113,10 @@ class SqliteStore(Store):
             try:
                 _cursor = _connection.cursor()
                 _cursor.execute(_CREATE_TABLE_SQL.format(self._table))
-                _cursor.execute(f'CREATE INDEX IF NOT EXISTS idx_{self._table}_priority on {self._table}(priority)')
-                _cursor.execute(f"UPDATE {self._table} set state = ? where state = ?",
-                                (State.WAITING.value, State.EXECUTING.value))
+                _cursor.execute(
+                    f'CREATE INDEX IF NOT EXISTS idx_{self._table}_priority on {self._table}(priority)')
+                _cursor.execute(f"UPDATE {self._table} set state = ?, msg = ? where state = ?",
+                                (State.WAITING.value, '等待处理', State.EXECUTING.value))
                 _connection.commit()
             except sqlite3.Error:
                 logging.exception("Init table failed")
