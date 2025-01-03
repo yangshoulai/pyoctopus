@@ -6,7 +6,7 @@ import os.path
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import unpad
 
-from pyoctopus import selector, converter, processor, matcher, site, limiter, new, Request, Response
+from pyoctopus import selector, converter, processor, matcher, site, limiter, new, Request, Response, store
 
 logging.basicConfig(level=logging.INFO)
 
@@ -14,8 +14,8 @@ logging.basicConfig(level=logging.INFO)
 @selector.hyperlink(
     selector.link(
         selector.xpath('//main//ul[contains(@class, "uk-grid")]//div[@class="uk-card-media-top"]//a/@href', multi=True),
-        repeatable=False, priority=1),
-    selector.link(selector.xpath('//a[@class="next page-numbers"]/@href', multi=False), repeatable=False, priority=2)
+        repeatable=False, priority=2),
+    selector.link(selector.xpath('//a[@class="next page-numbers"]/@href', multi=False), repeatable=False, priority=1)
 )
 class AlbumList:
     pass
@@ -23,7 +23,7 @@ class AlbumList:
 
 @selector.hyperlink(
     selector.link(selector.regex(r'.*/photo/(\d+)', group=1, selector=selector.xpath('//link[@rel="canonical"]/@href'),
-                                 format_str='/app/post/p?id={}'), repeatable=False, priority=1,
+                                 format_str='/app/post/p?id={}'), repeatable=False, priority=3,
                   attr_props=['id', 'name', 'url_prefix'])
 )
 class AlbumDetails:
@@ -54,7 +54,7 @@ def decode_mzt_image_response(res: Response) -> list[Request]:
     imgs = unpad(decrypted, AES.block_size).decode('utf-8')
     requests = []
     for img in _json.loads(imgs):
-        requests.append(Request(res.request.get_attr('url_prefix') + '/' + img, priority=5, repeatable=False,
+        requests.append(Request(res.request.get_attr('url_prefix') + '/' + img, priority=4, repeatable=False,
                                 attrs={'id': _id, 'name': res.request.get_attr('name')}))
     return requests
 
@@ -72,5 +72,6 @@ if __name__ == '__main__':
         (matcher.url_matcher(r'.*/app/post/p\?id=(\d+)'), decode_mzt_image_response),
         (matcher.IMAGE, processor.downloader(os.path.expanduser('~/Downloads/mzt'), sub_dir_attr='name'))
     ]
-    octopus = new(processors=processors, sites=sites, threads=1)
+    octopus = new(processors=processors, sites=sites, threads=1,
+                  store=store.sqlite_store(os.path.expanduser('~/Downloads/pyoctopus.db'), table='mzt'))
     octopus.start(seed)

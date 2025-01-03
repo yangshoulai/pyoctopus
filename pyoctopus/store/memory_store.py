@@ -2,7 +2,7 @@ import queue
 import threading
 
 from .store import Store
-from ..reqeust import Request
+from ..reqeust import Request, State
 
 
 class _Wrapper:
@@ -33,6 +33,9 @@ class _MemoryStore(Store):
             return r.request if r else None
         except queue.Empty:
             return None
+
+    def update_state(self, r: Request, state: State):
+        r.state = state
 
 
 def new() -> Store:

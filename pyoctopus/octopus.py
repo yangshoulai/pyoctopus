@@ -9,7 +9,7 @@ from urllib.parse import urljoin, urlencode, parse_qs, urlparse
 
 import requests
 
-from .reqeust import Request
+from .reqeust import Request, State as RequestState
 from .response import Response
 from .site import Site
 from .store import Store, memory_store
@@ -114,6 +114,7 @@ class Octopus:
             if not r.url.startswith('http'):
                 r.url = urljoin(p.url, r.url)
         r.id = _generate_request_id(r)
+        r.state = RequestState.WAITING
         if not self._store.put(r) and not r.repeatable:
             logging.debug(f"Can not put [{r}] to store, maybe it has been visited")
 
@@ -154,7 +155,9 @@ class Octopus:
                     for req in new_requests:
                         if self._state.value < State.STOPPING.value:
                             self.add(req, r)
-        except BaseException as e:
+            self._store.update_state(r, RequestState.COMPLETED)
+        except BaseException:
+            self._store.update_state(r, RequestState.FAILED)
             logging.exception(f"Process [req = {r}, resp = {res}] error")
         finally:
             self._semaphore.release()

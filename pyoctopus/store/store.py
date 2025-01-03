@@ -1,6 +1,6 @@
 from abc import abstractmethod
 
-from ..reqeust import Request
+from ..reqeust import Request, State
 
 
 class Store:
@@ -11,4 +11,8 @@ class Store:
 
     @abstractmethod
     def get(self) -> Request | None:
+        pass
+
+    @abstractmethod
+    def update_state(self, r: Request, state: State):
         pass

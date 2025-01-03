@@ -1,4 +1,13 @@
+from enum import Enum
 from typing import Any
+
+
+class State(Enum):
+    NEW = 'NEW'
+    WAITING = 'WAITING'
+    EXECUTING = 'EXECUTING'
+    FAILED = 'FAILED'
+    COMPLETED = 'COMPLETED'
 
 
 class Request:
@@ -26,6 +35,7 @@ class Request:
         self.attrs = {} if attrs is None else attrs
         self.parent = None
         self.id = None
+        self.state = State.NEW
 
     def get_attr(self, name):
         return self.attrs.get(name, None)
