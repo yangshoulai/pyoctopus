@@ -12,10 +12,6 @@ setup(
         'pycryptodome',
         'tornado'
     ],
-    tests_require=[                      # 测试时需要的依赖包
-        'pytest',
-    ],
-    test_suite='tests',                  # 测试目录
     author='yangshoulai',                  # 作者信息
     author_email='shoulai.yang@gmail.com',  # 作者邮箱
     description='A simple Python library for web crawler',  # 库的简短描述
