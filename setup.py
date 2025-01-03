@@ -3,7 +3,7 @@ from setuptools import setup, find_packages
 setup(
     name='pyoctopus',                    # 库的名称
     version='0.0.1',                     # 库的版本
-    packages=find_packages(where='pyoctopus'),            # 自动查找并包含所有模块
+    packages=find_packages(),            # 自动查找并包含所有模块
     install_requires=[                   # 项目的依赖包
         'requests',                      # 示例依赖
         'beautifulsoup4',
