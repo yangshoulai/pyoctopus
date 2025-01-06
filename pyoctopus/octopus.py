@@ -157,7 +157,7 @@ class Octopus:
             self._log_undone_tasks()
 
     def _process(self, r: Request):
-        global res
+        res = None
         try:
             site = self._get_site(urlparse(r.url).hostname)
             if site.limiter is not None:
