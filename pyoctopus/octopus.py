@@ -88,9 +88,9 @@ class Octopus:
             self.add(s)
         self._boss = ThreadPoolExecutor(max_workers=1)
         self._workers = ThreadPoolExecutor(max_workers=self._threads)
-        self._boss_future = self._boss.submit(self._dispatch)
         self._state = State.STARTED
-        logging.info("octopus started")
+        self._boss_future = self._boss.submit(self._dispatch)
+        logging.info("Octopus started")
         return self._boss_future
 
     def start(self, *seeds: Request | str):
@@ -98,7 +98,7 @@ class Octopus:
 
     def stop(self):
         if not self._set_state(State.STOPPING, State.STARTED):
-            raise RuntimeError("Octopus is not in INIT state")
+            raise RuntimeError("Octopus is not in STARTED state")
         wait([self._boss_future, *self._workers_futures],
              return_when=ALL_COMPLETED)
         self._boss.shutdown()
@@ -113,6 +113,9 @@ class Octopus:
         if p is not None:
             r.parent = p.id
             r.depth = p.depth + 1
+            if r.inherit:
+                r.headers = {**p.headers, **r.headers}
+                r.attrs = {**p.attrs, **r.attrs}
             if r.headers.get(_HEADER_REFERER, None) is None:
                 m = _REGEX_REFERER.match(p.url)
                 if m is not None:
@@ -166,8 +169,12 @@ class Octopus:
                     for req in new_requests:
                         if self._state.value < State.STOPPING.value:
                             self.add(req, r)
+            r.msg = '成功处理'
+            r.state = RequestState.COMPLETED
             self._store.update_state(r, RequestState.COMPLETED, '成功处理')
         except BaseException as e:
+            r.msg = str(e)
+            r.state = RequestState.FAILED
             self._store.update_state(r, RequestState.FAILED, str(e))
             logging.exception(f"Process [req = {r}, resp = {res}] error")
         finally:

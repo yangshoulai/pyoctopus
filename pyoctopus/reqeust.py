@@ -18,7 +18,8 @@ class Request:
                  headers: dict[str, str] = None,
                  priority: int = 0,
                  repeatable: bool = True,
-                 attrs: dict[str, Any] = None):
+                 attrs: dict[str, Any] = None,
+                 inherit: bool = False):
         if not url:
             raise ValueError('url is empty')
         if not method:
@@ -33,11 +34,12 @@ class Request:
         self.priority = priority
         self.repeatable = repeatable
         self.attrs = {} if attrs is None else attrs
+        self.inherit = inherit
         self.parent = None
         self.id = None
         self.state = State.NEW
-        self.depth = 1
         self.msg = None
+        self.depth = 1
 
     def get_attr(self, name):
         return self.attrs.get(name, None)
@@ -61,6 +63,7 @@ def new(url: str, method: str = 'GET',
         headers: dict[str, str] = None,
         priority: int = 0,
         repeatable: bool = True,
-        attrs: dict[str, Any] = None) -> Request:
+        attrs: dict[str, Any] = None,
+        inherit: bool = False) -> Request:
     return Request(url, method, queries=queries, data=data, headers=headers, priority=priority, repeatable=repeatable,
-                   attrs=attrs)
+                   attrs=attrs, inherit=inherit)

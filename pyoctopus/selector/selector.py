@@ -116,9 +116,14 @@ def select(content: str, result_class: type, links: list[Request] = None, *args,
                     requests.extend(l)
                 else:
                     requests.append(l)
-                new_requests = [Request(x, link.method, queries=link.queries, data=link.data, headers=link.headers,
+                new_requests = [Request(x,
+                                        link.method,
+                                        queries=link.queries,
+                                        data=link.data,
+                                        headers=link.headers,
                                         priority=link.priority,
-                                        repeatable=link.repeatable) for x in requests]
+                                        repeatable=link.repeatable,
+                                        inherit=link.inherit) for x in requests]
                 if link.attr_props:
                     for attr_prop in link.attr_props:
                         if attr_prop in r.__dict__:

@@ -13,7 +13,8 @@ class Link:
                  headers: dict[str, str] = None,
                  priority: int = 0,
                  repeatable: bool = True,
-                 attr_props: list[str] = None):
+                 attr_props: list[str] = None,
+                 inherit: bool = False):
         self.selector = selector
         self.method = method
         self.queries = {} if queries is None else queries
@@ -22,6 +23,7 @@ class Link:
         self.priority = priority
         self.repeatable = repeatable
         self.attr_props = attr_props
+        self.inherit = inherit
 
 
 class Hyperlink:
@@ -46,6 +48,7 @@ def link(selector: Selector, method: str = 'GET',
          headers: dict[str, str] = None,
          priority: int = 0,
          repeatable: bool = True,
-         attr_props: list[str] = None) -> Link:
+         attr_props: list[str] = None,
+         inherit: bool = False) -> Link:
     return Link(selector, method, queries=queries, data=data, headers=headers, priority=priority,
-                repeatable=repeatable, attr_props=attr_props)
+                repeatable=repeatable, attr_props=attr_props, inherit=inherit)
