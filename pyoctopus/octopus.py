@@ -86,8 +86,8 @@ class Octopus:
         self._state = State.STARTING
         for s in self._seeds:
             self.add(s)
-        self._boss = ThreadPoolExecutor(max_workers=1)
-        self._workers = ThreadPoolExecutor(max_workers=self._threads)
+        self._boss = ThreadPoolExecutor(max_workers=1, thread_name_prefix="boss")
+        self._workers = ThreadPoolExecutor(max_workers=self._threads, thread_name_prefix="worker")
         self._state = State.STARTED
         self._boss_future = self._boss.submit(self._dispatch)
         logging.info("Octopus started")

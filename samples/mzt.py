@@ -8,7 +8,9 @@ from Crypto.Util.Padding import unpad
 
 from pyoctopus import selector, converter, processor, matcher, site, limiter, new, Request, Response, store
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    format='%(asctime)s - %(threadName)s - %(levelname)s - %(message)s',
+    level=logging.INFO)
 
 
 @selector.hyperlink(
