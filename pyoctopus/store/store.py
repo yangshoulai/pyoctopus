@@ -14,5 +14,9 @@ class Store:
         pass
 
     @abstractmethod
+    def exists(self, id: str) -> bool:
+        pass
+
+    @abstractmethod
     def update_state(self, r: Request, state: State, msg: str = None):
         pass

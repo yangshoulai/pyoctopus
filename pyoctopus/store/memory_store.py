@@ -21,11 +21,9 @@ class _MemoryStore(Store):
 
     def put(self, r: Request) -> bool:
         with self._lock:
-            if r.repeatable or r.id not in self._visited:
-                self._visited.add(r.id)
-                self._queue.put(_Wrapper(r))
-                return True
-            return False
+            self._visited.add(r.id)
+            self._queue.put(_Wrapper(r))
+            return True
 
     def get(self) -> Request | None:
         try:
@@ -37,6 +35,9 @@ class _MemoryStore(Store):
     def update_state(self, r: Request, state: State, msg: str = None):
         r.msg = msg
         r.state = state
+
+    def exists(self, id: str) -> bool:
+        return id in self._visited
 
 
 def new() -> Store:

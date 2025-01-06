@@ -49,7 +49,7 @@ class SqliteStore(Store):
         with sqlite3.connect(self._db) as _connection:
             try:
                 _cursor = _connection.cursor()
-                if self._exists(r.id):
+                if self.exists(r.id):
                     _cursor.execute(self._sql_update_by_id,
                                     (r.url, r.method, r.priority, r.repeatable, r.parent, r.data,
                                      json.dumps(r.queries, ensure_ascii=False),
@@ -66,8 +66,8 @@ class SqliteStore(Store):
                     _connection.commit()
                 return True
             except sqlite3.Error as e:
-                logging.exception("Put %s to sqlite failed", r)
                 _connection.rollback()
+                raise e
 
     def get(self) -> Request | None:
         with sqlite3.connect(self._db) as _connection:
@@ -94,10 +94,9 @@ class SqliteStore(Store):
                     _connection.commit()
                     return r
                 return None
-            except sqlite3.Error:
-                logging.exception("Get request from sqlite failed")
+            except sqlite3.Error as e:
                 _connection.rollback()
-                return None
+                raise e
 
     def update_state(self, r: Request, state: State, msg: str = None):
         r.state = state
@@ -107,19 +106,19 @@ class SqliteStore(Store):
                 _cursor = _connection.cursor()
                 _cursor.execute(self._sql_update_state_by_id, (state.value, msg, r.id,))
                 _connection.commit()
-            except sqlite3.Error:
-                logging.exception(f"Update [{r}] state failed")
+            except sqlite3.Error as e:
                 _connection.rollback()
+                raise e
 
-    def _exists(self, id: str) -> bool:
+    def exists(self, id: str) -> bool:
         with sqlite3.connect(self._db) as _connection:
             try:
                 _cursor = _connection.cursor()
                 _cursor.execute(self._sql_exist_by_id, (id,))
                 row = _cursor.fetchone()
                 return row[0] > 0
-            except sqlite3.Error:
-                logging.exception("Create table failed")
+            except sqlite3.Error as e:
+                raise e
 
     def _init_table(self):
         with sqlite3.connect(self._db) as _connection:
@@ -129,9 +128,9 @@ class SqliteStore(Store):
                 _cursor.execute(self._sql_create_idx_priority)
                 _cursor.execute(self._sql_update_state, (State.WAITING.value, '等待处理', State.EXECUTING.value))
                 _connection.commit()
-            except sqlite3.Error:
-                logging.exception("Init table failed")
+            except sqlite3.Error as e:
                 _connection.rollback()
+                raise e
 
 
 def new(db: str, table: str = 'pyoctopus') -> SqliteStore:

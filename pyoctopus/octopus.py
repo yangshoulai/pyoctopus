@@ -125,9 +125,10 @@ class Octopus:
         r.id = _generate_request_id(r)
         r.state = RequestState.WAITING
         r.msg = '等待处理'
-        if not self._store.put(r) and not r.repeatable:
-            logging.debug(
-                f"Can not put [{r}] to store, maybe it has been visited")
+
+        if r.repeatable or not self._store.exists(r.id):
+            if not self._store.put(r):
+                logging.warning(f"Can not put [{r}] to store")
 
     @property
     def state(self):
