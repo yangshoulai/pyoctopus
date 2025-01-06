@@ -4,3 +4,8 @@ lxml==5.3.0
 pycryptodome==3.21.0
 Requests==2.32.3
 tornado==6.4.2
+
+decorator~=5.1.1
+setuptools~=75.6.0
+attrs~=24.3.0
+openpyxl~=3.1.5

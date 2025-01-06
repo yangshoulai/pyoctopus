@@ -13,3 +13,4 @@ from .selector import *
 from .matcher import *
 from .processor import *
 from .store import *
+from .collector import *

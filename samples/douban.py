@@ -1,4 +1,5 @@
 import logging
+import os
 
 import pyoctopus
 
@@ -9,6 +10,9 @@ logging.info("")
 class MovieActor:
     id = pyoctopus.regex("^.*/(\\d+)/$", 1, pyoctopus.xpath("//a/@href"), converter=pyoctopus.int_converter())
     name = pyoctopus.css('a', text=True)
+
+    def __str__(self):
+        return f"{self.name}({self.id})"
 
 
 @pyoctopus.hyperlink(pyoctopus.link(pyoctopus.css('.item div.hd > a', multi=True, attr='href'), repeatable=False),
@@ -31,9 +35,25 @@ class DoubanMovie:
         return f"{{name={self.name}, score={self.score}, published_date={self.published_date}, imdb={self.imdb}}}"
 
 
-def collector(r):
-    if r and r.name:
-        logging.info(r)
+excel_collector = pyoctopus.excel_collector(os.path.expanduser('~/Downloads/movies.xlsx'), False, columns=[
+    pyoctopus.excel_column('name', '片名'),
+    pyoctopus.excel_column('score', '得分'),
+    pyoctopus.excel_column('published_date', '发布日期'),
+    pyoctopus.excel_column('imdb', 'imdb'),
+    pyoctopus.excel_column('directors', '导演', style=pyoctopus.excel_style(delimiter='、')),
+    pyoctopus.excel_column('writers', '编剧', style=pyoctopus.excel_style(delimiter='、')),
+    pyoctopus.excel_column('actors', '演员'),
+    pyoctopus.excel_column('types', '类型'),
+    pyoctopus.excel_column('local', '地区'),
+    pyoctopus.excel_column('languages', '语言'),
+    pyoctopus.excel_column('duration', '时长（分）'),
+    pyoctopus.excel_column('brief', '简介')
+])
+
+
+def collect(movie):
+    if movie.__dict__.get('name', None) is not None:
+        excel_collector(movie)
 
 
 if __name__ == '__main__':
@@ -44,7 +64,7 @@ if __name__ == '__main__':
                             }
                             )]
     octopus = pyoctopus.new(
-        processors=[(pyoctopus.ALL, pyoctopus.extractor(DoubanMovie, collector=collector))],
+        processors=[(pyoctopus.ALL, pyoctopus.extractor(DoubanMovie, collector=collect))],
         sites=sites
     )
     octopus.start('https://movie.douban.com/top250?start=0&filter')

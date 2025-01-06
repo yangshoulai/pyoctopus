@@ -24,6 +24,7 @@ class AlbumList:
 )
 class AlbumDetails:
     name = pyoctopus.xpath('//h1/text()')
+    url = pyoctopus.url()
 
 
 if __name__ == '__main__':
@@ -41,7 +42,15 @@ if __name__ == '__main__':
          pyoctopus.extractor(AlbumList)),
         (pyoctopus.not_matcher(
             pyoctopus.or_matcher(pyoctopus.url_matcher(r'.*/category/.*/page/(\d+)'), pyoctopus.IMAGE)),
-         pyoctopus.extractor(AlbumDetails)),
+         pyoctopus.extractor(AlbumDetails,
+                             collector=pyoctopus.excel_collector(os.path.expanduser('~/Downloads/everia.xlsx'),
+                                                                 True,
+                                                                 columns=[pyoctopus.excel_column('name', '名称'),
+                                                                          pyoctopus.excel_column('url', '地址')
+                                                                          ]
+                                                                 )
+                             )
+        ),
         (pyoctopus.IMAGE, pyoctopus.downloader(
             os.path.expanduser('~/Downloads/everia'), sub_dir_attr='name'))
     ]
