@@ -10,7 +10,7 @@ logging.basicConfig(level=logging.INFO)
     pyoctopus.link(pyoctopus.xpath('//div[@id="blog-entries"]/article//h2/a/@href', multi=True),
                    repeatable=False, priority=2),
     pyoctopus.link(pyoctopus.xpath(
-        '//a[@class="next page-numbers"]/@href', multi=False), repeatable=False, priority=3)
+        '//a[@class="next page-numbers"]/@href', multi=False), repeatable=True, priority=3)
 )
 class AlbumList:
     pass
@@ -32,10 +32,10 @@ if __name__ == '__main__':
     proxy = 'http://127.0.0.1:7890'
     sites = [
         pyoctopus.site('everia.club', proxy=proxy,
-                       limiter=pyoctopus.limiter(1, 0.75)),
+                       limiter=pyoctopus.limiter(1, 1)),
         pyoctopus.site('*.top',
                        proxy=proxy,
-                       limiter=pyoctopus.limiter(1, 0.75))
+                       limiter=pyoctopus.limiter(1, 1))
     ]
     processors = [
         (pyoctopus.url_matcher(r'.*/category/.*/page/(\d+)'),
@@ -54,5 +54,5 @@ if __name__ == '__main__':
         (pyoctopus.IMAGE, pyoctopus.downloader(
             os.path.expanduser('~/Downloads/everia'), sub_dir_attr='name'))
     ]
-    pyoctopus.new(processors=processors, sites=sites, threads=8, store=pyoctopus.sqlite_store(
+    pyoctopus.new(processors=processors, sites=sites, threads=3, store=pyoctopus.sqlite_store(
         os.path.expanduser('~/Downloads/pyoctopus.db'), table='everia')).start(seed)
