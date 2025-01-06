@@ -1,3 +1,5 @@
+from urllib.parse import urlparse, parse_qs
+
 from .selector import Selector
 from .. import Response
 from ..types import Converter
@@ -21,6 +23,8 @@ class Query(Selector):
 
     def do_select(self, content: str, resp: Response) -> list[str]:
         attr = resp.request.queries.get(self.expr, None)
+        if attr is None:
+            attr = parse_qs(urlparse(resp.request.url).query).get(self.expr, None)
         if attr is None:
             return []
         return [str(c) for c in attr] if isinstance(attr, list) else [str(attr)]

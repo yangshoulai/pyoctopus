@@ -21,7 +21,11 @@ class AlbumList:
                    attr_props=['name'])
 )
 class AlbumDetails:
+    id = pyoctopus.query('id')
     name = pyoctopus.xpath('//h1/text()')
+
+    def __str__(self):
+        return f'{self.id} {self.name}'
 
 
 if __name__ == '__main__':
@@ -36,7 +40,7 @@ if __name__ == '__main__':
     processors = [
         (pyoctopus.url_matcher(r'.*/\?page=(\d+)'), pyoctopus.extractor(AlbumList)),
         (pyoctopus.url_matcher(r'.*/photo.php\?id=.*'),
-         pyoctopus.extractor(AlbumDetails)),
+         pyoctopus.extractor(AlbumDetails, collector=pyoctopus.logging_collector())),
         (pyoctopus.IMAGE, pyoctopus.downloader(os.path.expanduser(
             '~/Downloads/xiurenwang'), sub_dir_attr='name'))
     ]
