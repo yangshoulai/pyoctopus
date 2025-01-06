@@ -1,5 +1,7 @@
 from .selector import Selector
+from .. import Response
 from ..types import Converter
+from bs4 import BeautifulSoup
 
 
 class Css(Selector):
@@ -25,8 +27,7 @@ class Css(Selector):
         self.attr = attr
         self.text = text
 
-    def do_select(self, content: str) -> str | list[str]:
-        from bs4 import BeautifulSoup
+    def do_select(self, content: str, resp: Response) -> list[str]:
         html = BeautifulSoup(content, 'lxml')
         return [(x.attrs[self.attr] if self.attr else (x.text if self.text else x.decode())) for x in
                 html.select(self.expr)]

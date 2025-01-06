@@ -1,4 +1,7 @@
+import re
+
 from .selector import Selector
+from .. import Response
 from ..types import Converter
 
 
@@ -22,8 +25,7 @@ class Regex(Selector):
                                     converter=converter)
         self.group = group
 
-    def do_select(self, content: str) -> str | list[str]:
-        import re
+    def do_select(self, content: str, resp: Response) -> list[str]:
         matches = re.finditer(self.expr, content)
         return [x.group(self.group) for x in matches]
 

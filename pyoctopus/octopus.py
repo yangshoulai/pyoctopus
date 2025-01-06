@@ -143,6 +143,7 @@ class Octopus:
                 f for f in self._workers_futures if not f.done()]
             r = self._store.get()
             if r is not None:
+                logging.info(f"Take {r}")
                 self._semaphore.acquire()
                 self._workers_futures.append(
                     self._workers.submit(self._process, r))

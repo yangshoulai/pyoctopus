@@ -3,7 +3,7 @@ import os.path
 
 import pyoctopus
 
-logging.basicConfig(level=logging.DEBUG)
+logging.basicConfig(level=logging.INFO)
 
 
 @pyoctopus.hyperlink(

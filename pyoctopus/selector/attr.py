@@ -3,18 +3,16 @@ from .. import Response
 from ..types import Converter
 
 
-class Json(Selector):
+class Attr(Selector):
     def __init__(self,
                  expr: str,
-                 selector: Selector = None,
                  *,
                  multi=False,
                  trim=True,
                  filter_empty=True,
                  format_str: str = None,
                  converter: Converter = None):
-        super(Json, self).__init__(expr,
-                                   selector=selector,
+        super(Attr, self).__init__(expr,
                                    multi=multi,
                                    trim=trim,
                                    filter_empty=filter_empty,
@@ -22,21 +20,20 @@ class Json(Selector):
                                    converter=converter)
 
     def do_select(self, content: str, resp: Response) -> list[str]:
-        from jsonpath_ng import parse
-        matches = parse(self.expr).find(j.loads(content))
-        return [x.value for x in matches]
+        attr = resp.request.get_attr(self.expr)
+        if attr is None:
+            return []
+        return [str(c) for c in attr] if isinstance(attr, list) else [str(attr)]
 
 
-def new(expr: str,
-        selector: Selector = None,
+def new(name: str,
         *,
         multi=False,
         trim=True,
         filter_empty=True,
         format_str: str = None,
-        converter: Converter = None) -> Json:
-    return Json(expr,
-                selector,
+        converter: Converter = None) -> Attr:
+    return Attr(name,
                 multi=multi,
                 trim=trim,
                 filter_empty=filter_empty,

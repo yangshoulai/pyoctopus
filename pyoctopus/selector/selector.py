@@ -2,7 +2,7 @@ import logging
 from abc import abstractmethod
 from typing import List
 
-from .. import Request
+from .. import Request, Response
 from ..types import Converter
 from ..types import R
 
@@ -29,17 +29,17 @@ class Selector:
         self.format_str = format_str
         self.converter = converter
 
-    def select(self, content: str) -> str | list[str]:
+    def select(self, content: str, resp: Response) -> str | list[str]:
         try:
             selected = []
             if content and self.selector:
-                content = self.selector.select(content)
-            if content and self.expr:
+                content = self.selector.select(content, resp)
+            if content and self.expr is not None:
                 if isinstance(content, list):
                     for c in content:
-                        selected.append(*self.do_select(c))
+                        selected.append(*self.do_select(c, resp))
                 else:
-                    selected = [*self.do_select(content)]
+                    selected = [*self.do_select(content, resp)]
 
             selected = selected if self.multi else ([selected[0]] if len(selected) > 0 else [])
 
@@ -61,7 +61,7 @@ class Selector:
             raise e
 
     @abstractmethod
-    def do_select(self, content: str) -> List[str]:
+    def do_select(self, content: str, resp: Response) -> List[str]:
         pass
 
     def __str__(self):
@@ -77,18 +77,18 @@ class Embedded:
         self.args = args
         self.kwargs = kwargs
 
-    def select(self, content: str, links: list[Request] = None) -> R | list[R]:
+    def select(self, content: str, resp: Response, links: list[Request] = None) -> R | list[R]:
         if links is None:
             links = []
-        selected = self.selector.select(content)
+        selected = self.selector.select(content, resp)
         if isinstance(selected, list):
             results = []
             for x in selected:
-                s = select(x, self.target, *self.args, **self.kwargs)
+                s = select(x, resp, self.target, *self.args, **self.kwargs)
                 results.append(s[0])
                 links.extend(s[1])
             return results
-        s = select(selected, self.target, *self.args, **self.kwargs)
+        s = select(selected, resp, self.target, *self.args, **self.kwargs)
         links.extend(s[1])
         return s[0]
 
@@ -97,20 +97,21 @@ def embedded(selector: Selector, embedded_class: type[R], *args, **kwargs) -> Em
     return Embedded(selector, embedded_class, *args, **kwargs)
 
 
-def select(content: str, result_class: type, links: list[Request] = None, *args, **kwargs) -> (R, list[Request]):
+def select(content: str, resp: Response, result_class: type, links: list[Request] = None, *args, **kwargs) -> (
+        R, list[Request]):
     r = result_class(*args, **kwargs)
     if links is None:
         links = []
     for key, value in type(r).__dict__.items():
         if isinstance(value, Selector):
-            r.__dict__[key] = value.select(content)
+            r.__dict__[key] = value.select(content, resp)
         elif isinstance(value, Embedded):
-            r.__dict__[key] = value.select(content, links)
+            r.__dict__[key] = value.select(content, resp, links)
 
     if PROP_LINKS in r.__dict__:
         for link in r.__dict__[PROP_LINKS]:
             requests = []
-            l = link.selector.select(content)
+            l = link.selector.select(content, resp)
             if l:
                 if isinstance(l, list):
                     requests.extend(l)

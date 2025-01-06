@@ -8,7 +8,7 @@ from ..types import Collector, Processor, R
 
 def new(result_class: Type[R], collector: Collector = None, *args, **kwargs) -> Processor:
     def process(res: Response) -> List[Request]:
-        r, links = select(res.text, result_class=result_class, *args, **kwargs)
+        r, links = select(res.text, res, result_class=result_class, *args, **kwargs)
         if collector:
             collector(r)
         return links

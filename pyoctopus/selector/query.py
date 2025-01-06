@@ -1,21 +1,18 @@
-from lxml import html
-
 from .selector import Selector
 from .. import Response
 from ..types import Converter
 
 
-class Xpath(Selector):
-    def __init__(self, expr: str,
-                 selector: Selector = None,
+class Query(Selector):
+    def __init__(self,
+                 expr: str,
                  *,
                  multi=False,
                  trim=True,
                  filter_empty=True,
                  format_str: str = None,
                  converter: Converter = None):
-        super(Xpath, self).__init__(expr,
-                                    selector=selector,
+        super(Query, self).__init__(expr,
                                     multi=multi,
                                     trim=trim,
                                     filter_empty=filter_empty,
@@ -23,18 +20,22 @@ class Xpath(Selector):
                                     converter=converter)
 
     def do_select(self, content: str, resp: Response) -> list[str]:
-        return [html.tostring(x, encoding='utf-8') if isinstance(x, html.HtmlElement) else str(x) for x in
-                html.fromstring(content).xpath(self.expr)]
+        attr = resp.request.queries.get(self.expr, None)
+        if attr is None:
+            return []
+        return [str(c) for c in attr] if isinstance(attr, list) else [str(attr)]
 
 
-def new(expr: str,
-        selector: Selector = None,
+def new(name: str,
         *,
         multi=False,
         trim=True,
         filter_empty=True,
         format_str: str = None,
-        converter: Converter = None) -> Xpath:
-    return Xpath(expr, selector, multi=multi, trim=trim, filter_empty=filter_empty,
+        converter: Converter = None) -> Query:
+    return Query(name,
+                 multi=multi,
+                 trim=trim,
+                 filter_empty=filter_empty,
                  format_str=format_str,
                  converter=converter)

@@ -51,7 +51,7 @@ class Request:
         return self.priority < other.priority
 
     def __str__(self):
-        return f'{{id={self.id}, url={self.url}}}'
+        return f'{{id={self.id}, url={self.url}, priority={self.priority}, depth={self.depth}}}'
 
     __repr__ = __str__
 

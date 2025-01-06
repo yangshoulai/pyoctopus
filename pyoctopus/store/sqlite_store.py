@@ -26,7 +26,7 @@ _SQL_CREATE_TABLE = 'CREATE TABLE IF NOT EXISTS {} (' + ', '.join([f'{c[0]} {c[1
 
 _COL_NAMES = ', '.join([c[0] for c in [_COL_ID, *_COLS]])
 
-_COL_UPDATE_BY_ID = ', '.join([f'{c[0]} = ?' for c in [_COLS]])
+_COL_UPDATE_BY_ID = ', '.join([f'{c[0]} = ?' for c in [*_COLS]])
 
 
 class SqliteStore(Store):
