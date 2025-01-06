@@ -5,7 +5,7 @@ import sqlite3
 from .store import Store
 from ..reqeust import Request, State
 
-_COL_ID = ('id', 'TEXT')
+_COL_ID = ('id', 'TEXT PRIMARY KEY')
 _COLS = [
     ('url', 'TEXT'),
     ('method', 'TEXT'),

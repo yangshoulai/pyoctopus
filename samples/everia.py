@@ -55,4 +55,4 @@ if __name__ == '__main__':
             os.path.expanduser('~/Downloads/everia'), sub_dir_attr='name'))
     ]
     pyoctopus.new(processors=processors, sites=sites, threads=3, store=pyoctopus.sqlite_store(
-        os.path.expanduser('~/Downloads/pyoctopus.db'), table='everia')).start(seed)
+        os.path.expanduser('~/Downloads/pyoctopus.db'), table='everia2')).start(seed)
