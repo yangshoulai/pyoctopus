@@ -19,12 +19,18 @@ class AlbumList:
 @pyoctopus.hyperlink(
     pyoctopus.link(pyoctopus.xpath(
         '//figure[@class="wp-block-gallery has-nested-images columns-1 wp-block-gallery-3 is-layout-flex wp-block-gallery-is-layout-flex"]/figure/img/@src',
-        multi=True), repeatable=False, priority=1,
-        attr_props=['name'])
+        multi=True),
+        repeatable=False,
+        priority=1,
+        attr_props=['name', 'dir']),
+    pyoctopus.link(pyoctopus.xpath('//div[@id="content"]/article//div[@class="separator"]//img/@src', multi=True),
+                   repeatable=False,
+                   priority=1,
+                   attr_props=['name', 'dir'])
 )
 class AlbumDetails:
     name = pyoctopus.xpath('//h1/text()')
-    url = pyoctopus.url()
+    dir = pyoctopus.regex(r'.*/(\d{4}/\d{2}/\d{2}/.*)/', group=1, selector=pyoctopus.url(url_decode=True))
 
 
 if __name__ == '__main__':
@@ -33,26 +39,14 @@ if __name__ == '__main__':
     sites = [
         pyoctopus.site('everia.club', proxy=proxy,
                        limiter=pyoctopus.limiter(1, 1)),
-        pyoctopus.site('*.top',
+        pyoctopus.site('*',
                        proxy=proxy,
                        limiter=pyoctopus.limiter(1, 1))
     ]
     processors = [
-        (pyoctopus.url_matcher(r'.*/category/.*/page/(\d+)'),
-         pyoctopus.extractor(AlbumList)),
-        (pyoctopus.not_matcher(
-            pyoctopus.or_matcher(pyoctopus.url_matcher(r'.*/category/.*/page/(\d+)'), pyoctopus.IMAGE)),
-         pyoctopus.extractor(AlbumDetails,
-                             collector=pyoctopus.excel_collector(os.path.expanduser('~/Downloads/everia.xlsx'),
-                                                                 True,
-                                                                 columns=[pyoctopus.excel_column('name', '名称'),
-                                                                          pyoctopus.excel_column('url', '地址')
-                                                                          ]
-                                                                 )
-                             )
-        ),
-        (pyoctopus.IMAGE, pyoctopus.downloader(
-            os.path.expanduser('~/Downloads/everia'), sub_dir_attr='name'))
+        (pyoctopus.url_matcher(r'.*/category/.*/page/(\d+)'), pyoctopus.extractor(AlbumList)),
+        (pyoctopus.url_matcher(r'.*/\d{4}/\d{2}/\d{2}/.*'), pyoctopus.extractor(AlbumDetails)),
+        (pyoctopus.IMAGE, pyoctopus.downloader(os.path.expanduser('~/Downloads/everia'), sub_dir_attr='dir'))
     ]
     pyoctopus.new(processors=processors, sites=sites, threads=3, store=pyoctopus.sqlite_store(
         os.path.expanduser('~/Downloads/pyoctopus.db'), table='everia')).start(seed)

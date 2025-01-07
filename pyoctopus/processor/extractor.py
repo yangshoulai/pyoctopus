@@ -1,3 +1,4 @@
+import logging
 from typing import Type, List
 
 from ..reqeust import Request
@@ -9,8 +10,13 @@ from ..types import Collector, Processor, R
 def new(result_class: Type[R], collector: Collector = None, *args, **kwargs) -> Processor:
     def process(res: Response) -> List[Request]:
         r, links = select(res.text, res, result_class=result_class, *args, **kwargs)
-        if collector and r is not None:
-            collector(r)
+        if r is not None:
+            if collector:
+                collector(r)
+        else:
+            logging.debug(f'No content found from {res}')
+        if not links:
+            logging.debug(f'No links found from {res}')
         return links
 
     return process
