@@ -192,7 +192,7 @@ class Octopus:
                         break
                 else:
                     break
-            logging.info(f"[{self.retries}]Retry {count} failed requests")
+            logging.info(f"[{self.retries}] Retry {count} failed requests")
             self.retries = self.retries - 1
         return has_fails
 

@@ -62,7 +62,7 @@ def decode_mzt_image_response(res: Response) -> list[Request]:
 
 
 if __name__ == '__main__':
-    seed = 'https://kkmzt.com/photo/page/1/'
+    seed = 'https://kkmzt.com/photo/121836'
     proxy = 'http://127.0.0.1:7890'
     sites = [
         site('kkmzt.com', proxy=proxy, limiter=limiter(1, 0.75)),

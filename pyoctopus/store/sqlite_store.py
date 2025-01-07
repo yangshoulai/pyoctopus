@@ -1,6 +1,6 @@
 import json
-import logging
 import sqlite3
+import threading
 
 from .store import Store
 from ..reqeust import Request, State
@@ -28,6 +28,8 @@ _COL_NAMES = ', '.join([c[0] for c in [_COL_ID, *_COLS]])
 
 _COL_UPDATE_BY_ID = ', '.join([f'{c[0]} = ?' for c in [*_COLS]])
 
+_local = threading.local()
+
 
 class SqliteStore(Store):
     def __init__(self, db: str, table: str = 'pyoctopus'):
@@ -47,7 +49,7 @@ class SqliteStore(Store):
         self._init_table()
 
     def put(self, r: Request) -> bool:
-        with sqlite3.connect(self._db) as _connection:
+        with self._get_connection() as _connection:
             try:
                 _cursor = _connection.cursor()
                 if self.exists(r.id):
@@ -56,7 +58,6 @@ class SqliteStore(Store):
                                      json.dumps(r.queries, ensure_ascii=False),
                                      json.dumps(r.headers, ensure_ascii=False), json.dumps(r.attrs, ensure_ascii=False),
                                      State.WAITING.value, r.depth, r.msg, r.inherit, r.id,))
-                    _connection.commit()
                 else:
                     _cursor.execute(self._sql_put,
                                     (r.id, r.url, r.method, r.priority, r.repeatable, r.parent, r.data,
@@ -64,7 +65,7 @@ class SqliteStore(Store):
                                      json.dumps(r.headers, ensure_ascii=False),
                                      json.dumps(r.attrs, ensure_ascii=False),
                                      r.state.value, r.depth, r.msg, r.inherit))
-                    _connection.commit()
+                _connection.commit()
                 return True
             except sqlite3.Error as e:
                 _connection.rollback()
@@ -88,7 +89,7 @@ class SqliteStore(Store):
         return r
 
     def get(self) -> Request | None:
-        with sqlite3.connect(self._db) as _connection:
+        with self._get_connection() as _connection:
             try:
                 _cursor = _connection.cursor()
                 _cursor.execute(self._sql_get, (State.WAITING.value,))
@@ -96,8 +97,8 @@ class SqliteStore(Store):
                 if row is not None:
                     r = self._row_to_request(row)
                     _cursor.execute(self._sql_update_state_by_id, (State.EXECUTING.value, '正在处理', r.id,))
-                    _connection.commit()
                     return r
+                _connection.commit()
                 return None
             except sqlite3.Error as e:
                 _connection.rollback()
@@ -106,7 +107,7 @@ class SqliteStore(Store):
     def update_state(self, r: Request, state: State, msg: str = None):
         r.state = state
         r.msg = msg
-        with sqlite3.connect(self._db) as _connection:
+        with self._get_connection() as _connection:
             try:
                 _cursor = _connection.cursor()
                 _cursor.execute(self._sql_update_state_by_id, (state.value, msg, r.id,))
@@ -116,11 +117,12 @@ class SqliteStore(Store):
                 raise e
 
     def exists(self, id: str) -> bool:
-        with sqlite3.connect(self._db) as _connection:
+        with self._get_connection() as _connection:
             try:
                 _cursor = _connection.cursor()
                 _cursor.execute(self._sql_exist_by_id, (id,))
                 row = _cursor.fetchone()
+                _connection.commit()
                 return row[0] > 0
             except sqlite3.Error as e:
                 raise e
@@ -138,15 +140,21 @@ class SqliteStore(Store):
                 raise e
 
     def get_fails(self, page: int = 1, page_size: int = 100) -> list[Request]:
-        with sqlite3.connect(self._db) as _connection:
+        with self._get_connection() as _connection:
             try:
                 _cursor = _connection.cursor()
                 _cursor.execute(self._sql_paged_select, (State.FAILED.value, page_size, (page - 1) * page_size))
                 rows = _cursor.fetchall()
+                _connection.commit()
                 return [self._row_to_request(r) for r in rows]
             except sqlite3.Error as e:
                 _connection.rollback()
                 raise e
+
+    def _get_connection(self) -> sqlite3.Connection:
+        if not hasattr(_local, 'conn'):
+            _local.conn = sqlite3.connect(self._db)
+        return _local.conn
 
 
 def new(db: str, table: str = 'pyoctopus') -> SqliteStore:
