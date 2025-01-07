@@ -52,6 +52,9 @@ class _MemoryStore(Store):
     def get_fails(self, page: int = 1, page_size: int = 100) -> list[Request]:
         return [self._all[f] for f in self._fails[page_size * (page - 1):page_size * page]]
 
+    def get_statistics(self) -> (int, int, int, int):
+        return len(self._all), self._queue.qsize(), len(self._completed), len(self._fails)
+
 
 def new() -> Store:
     return _MemoryStore()

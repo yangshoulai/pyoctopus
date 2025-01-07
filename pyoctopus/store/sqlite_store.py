@@ -46,6 +46,7 @@ class SqliteStore(Store):
         self._sql_put = f'INSERT INTO {self._table} ({_COL_NAMES}) VALUES ({", ".join(["?" for _ in [_COL_ID, *_COLS]])})'
         self._sql_update_state = f'UPDATE {self._table} SET state = ?, msg = ? WHERE state = ?'
         self._sql_paged_select = f'SELECT {_COL_NAMES} FROM {self._table} WHERE state = ? LIMIT ? OFFSET ?'
+        self._sql_count_by_state = f'SELECT count(1) FROM {self._table} WHERE state = ?'
         self._init_table()
 
     def put(self, r: Request) -> bool:
@@ -155,6 +156,24 @@ class SqliteStore(Store):
         if not hasattr(_local, 'conn'):
             _local.conn = sqlite3.connect(self._db)
         return _local.conn
+
+    def get_statistics(self) -> (int, int, int, int):
+        with self._get_connection() as _connection:
+            try:
+                _cursor = _connection.cursor()
+                _cursor.execute(f"select count(1) from {self._table}")
+                all = _cursor.fetchone()[0]
+                _cursor.execute(self._sql_count_by_state, (State.WAITING.value,))
+                waiting = _cursor.fetchone()[0]
+                _cursor.execute(self._sql_count_by_state, (State.COMPLETED.value,))
+                completed = _cursor.fetchone()[0]
+                _cursor.execute(self._sql_count_by_state, (State.FAILED.value,))
+                failed = _cursor.fetchone()[0]
+                _connection.commit()
+                return all, waiting, completed, failed
+            except sqlite3.Error as e:
+                _connection.rollback()
+                raise e
 
 
 def new(db: str, table: str = 'pyoctopus') -> SqliteStore:

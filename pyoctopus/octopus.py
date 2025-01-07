@@ -109,6 +109,10 @@ class Octopus:
         self._boss.shutdown()
         self._workers.shutdown()
         self._state = State.STOPPED
+
+        stat = self._store.get_statistics()
+        logging.info(
+            f"Pyoctopus stats: all = {stat[0]}, waiting = {stat[1]}, completed = {stat[2]}, failed = {stat[3]}")
         logging.info("Pyoctopus stopped")
 
     def add(self, r: Request, p: Request = None) -> None:
@@ -170,7 +174,7 @@ class Octopus:
             if r is None and len(self._workers_futures) == 0 and not has_queued_tasks:
                 if not self._retry_fails():
                     logging.info("No more tasks found, pyoctopus will stop")
-                    threading.Thread(target=self.stop).start()
+                    threading.Thread(target=self.stop, name="StopThread").start()
 
         if self._state.value > State.STARTED.value:
             self._log_undone_tasks()

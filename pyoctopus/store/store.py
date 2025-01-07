@@ -24,3 +24,7 @@ class Store:
     @abstractmethod
     def get_fails(self, page: int = 1, page_size: int = 100) -> list[Request]:
         pass
+
+    @abstractmethod
+    def get_statistics(self) -> (int, int, int, int):
+        pass
