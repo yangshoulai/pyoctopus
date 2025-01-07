@@ -15,7 +15,7 @@ sample_logging.setup()
     selector.link(
         selector.xpath('//main//ul[contains(@class, "uk-grid")]//div[@class="uk-card-media-top"]//a/@href', multi=True),
         repeatable=False, priority=2),
-    selector.link(selector.xpath('//a[@class="next page-numbers"]/@href', multi=False), repeatable=False, priority=1)
+    selector.link(selector.xpath('//a[@class="next page-numbers"]/@href', multi=False), repeatable=True, priority=1)
 )
 class AlbumList:
     pass
