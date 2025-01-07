@@ -1,9 +1,9 @@
-import logging
 import os.path
 
 import pyoctopus
+import sample_logging
 
-logging.basicConfig(level=logging.INFO)
+sample_logging.setup()
 
 
 @pyoctopus.hyperlink(

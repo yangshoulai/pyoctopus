@@ -1,10 +1,10 @@
-import logging
 import os
 
 import pyoctopus
 
-logging.basicConfig(level=logging.INFO)
-logging.info("")
+import sample_logging
+
+sample_logging.setup()
 
 
 class MovieActor:

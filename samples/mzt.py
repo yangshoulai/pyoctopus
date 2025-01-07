@@ -1,16 +1,14 @@
 import base64
 import hashlib
-import logging
 import os.path
 
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import unpad
 
+import sample_logging
 from pyoctopus import selector, converter, processor, matcher, site, limiter, new, Request, Response, store
 
-logging.basicConfig(
-    format='%(asctime)s - %(threadName)s - %(levelname)s - %(message)s',
-    level=logging.INFO)
+sample_logging.setup()
 
 
 @selector.hyperlink(

@@ -6,6 +6,8 @@ from ..response import Response
 from ..selector import select
 from ..types import Collector, Processor, R
 
+_logger = logging.getLogger('pyoctopus.processor.extractor')
+
 
 def new(result_class: Type[R], collector: Collector = None, *args, **kwargs) -> Processor:
     def process(res: Response) -> List[Request]:
@@ -14,9 +16,9 @@ def new(result_class: Type[R], collector: Collector = None, *args, **kwargs) -> 
             if collector:
                 collector(r)
         else:
-            logging.debug(f'No content found from {res}')
+            _logger.debug(f'No content found from {res}')
         if not links:
-            logging.debug(f'No links found from {res}')
+            _logger.debug(f'No links found from {res}')
         return links
 
     return process

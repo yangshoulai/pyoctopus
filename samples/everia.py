@@ -1,9 +1,10 @@
 import logging
 import os.path
-
+import sample_logging
 import pyoctopus
 
-logging.basicConfig(level=logging.INFO)
+sample_logging.setup()
+_logger = logging.getLogger('pyoctopus.sample.everia')
 
 
 @pyoctopus.hyperlink(
@@ -34,6 +35,7 @@ class AlbumDetails:
 
 
 if __name__ == '__main__':
+    _logger.debug('Starting everia.club crawler')
     seed = 'https://everia.club/category/chinese/page/1/'
     proxy = 'http://127.0.0.1:7890'
     sites = [

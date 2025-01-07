@@ -25,6 +25,8 @@ _DEFAULT_HEADERS = {
 
 _REGEX_REFERER = re.compile(r'^(https?://([^/]+)).*$')
 
+_logger = logging.getLogger('pyoctopus')
+
 
 def _generate_request_id(r: Request) -> str:
     parsed_url = urlparse(r.url)
@@ -77,9 +79,7 @@ class Octopus:
         self._workers_futures = []
         self._boss = None
         self._boss_future = None
-
         self._queue = queue.Queue()
-
         self._state = State.INIT
 
     def start_async(self, *seeds: Request | str) -> Future[None]:
@@ -95,7 +95,7 @@ class Octopus:
         self._workers = ThreadPoolExecutor(max_workers=self._threads, thread_name_prefix="worker")
         self._state = State.STARTED
         self._boss_future = self._boss.submit(self._dispatch)
-        logging.info("Pyoctopus started")
+        _logger.info("Pyoctopus started")
         return self._boss_future
 
     def start(self, *seeds: Request | str):
@@ -111,9 +111,9 @@ class Octopus:
         self._state = State.STOPPED
 
         stat = self._store.get_statistics()
-        logging.info(
+        _logger.info(
             f"Pyoctopus stats: all = {stat[0]}, waiting = {stat[1]}, completed = {stat[2]}, failed = {stat[3]}")
-        logging.info("Pyoctopus stopped")
+        _logger.info("Pyoctopus stopped")
 
     def add(self, r: Request, p: Request = None) -> None:
         with self._lock:
@@ -138,7 +138,7 @@ class Octopus:
         def _r():
             if r.repeatable or not self._store.exists(r.id):
                 if not self._store.put(r):
-                    logging.warning(f"Can not put [{r}] to store")
+                    _logger.warning(f"Can not put [{r}] to store")
 
         self._queue.put(_r)
 
@@ -156,7 +156,7 @@ class Octopus:
                 f for f in self._workers_futures if not f.done()]
             r = self._store.get()
             if r is not None:
-                logging.info(f"Take {r}")
+                _logger.info(f"Take {r}")
                 self._semaphore.acquire()
                 self._workers_futures.append(
                     self._workers.submit(self._process, r))
@@ -173,7 +173,7 @@ class Octopus:
                     break
             if r is None and len(self._workers_futures) == 0 and not has_queued_tasks:
                 if not self._retry_fails():
-                    logging.info("No more tasks found, pyoctopus will stop")
+                    _logger.info("No more tasks found, pyoctopus will stop")
                     threading.Thread(target=self.stop, name="StopThread").start()
 
         if self._state.value > State.STARTED.value:
@@ -196,7 +196,7 @@ class Octopus:
                         break
                 else:
                     break
-            logging.info(f"[{self.retries}] Retry {count} failed requests")
+            _logger.info(f"[{self.retries}] Retry {count} failed requests")
             self.retries = self.retries - 1
         return has_fails
 
@@ -208,8 +208,7 @@ class Octopus:
                 site.limiter.acquire()
             res = Octopus._download(r, site)
             if res.status != 200:
-                raise ValueError(
-                    "Bad http status [%s] for [%s]", res.status, r)
+                raise ValueError("Bad http status [%s] for [%s]", res.status, r)
             for [m, p] in self._processors:
                 if m(res):
                     new_requests = p(res)
@@ -223,7 +222,7 @@ class Octopus:
             r.msg = str(e)
             r.state = RequestState.FAILED
             self._queue.put(lambda: self._store.update_state(r, RequestState.FAILED, str(e)))
-            logging.exception(f"Process [req = {r}, resp = {res}] error")
+            _logger.exception(f"Process [req = {r}, resp = {res}] error")
         finally:
             self._semaphore.release()
 
@@ -234,8 +233,7 @@ class Octopus:
         with self._lock:
             if self._state == expected_state:
                 self._state = new_state
-                logging.debug(
-                    f"Pyoctopus state changed from {expected_state} to {new_state}")
+                _logger.debug(f"Pyoctopus state changed from {expected_state} to {new_state}")
                 return True
             else:
                 return False
@@ -255,7 +253,7 @@ class Octopus:
         _res.status = r.status_code
         _res.content = r.content
         _res.headers = {k: v for k, v in r.headers.items()}
-        _res.encoding = r.encoding
+        _res.encoding = r.encoding or site.encoding or 'utf-8'
         return _res
 
     def _get_site(self, host: str) -> Site:
@@ -270,8 +268,7 @@ class Octopus:
         undone_count = len(
             [x for x in [self._boss_future, *self._workers_futures] if not x.done()])
         if undone_count > 0:
-            logging.info(
-                f"Wait for {undone_count} tasks in the queue to complete")
+            _logger.info(f"Wait for {undone_count} tasks in the queue to complete")
 
 
 def new(store: Store = None,

@@ -1,7 +1,11 @@
-import logging
+import sample_logging
 import os
 
 import pyoctopus
+
+import sample_logging
+
+sample_logging.setup()
 
 
 class ProjectDetails:

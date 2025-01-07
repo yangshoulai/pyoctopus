@@ -7,6 +7,7 @@ from ..types import Converter
 from ..types import R
 
 PROP_LINKS = '__result_links__'
+_logger = logging.getLogger('pyoctopus.selector')
 
 
 class Selector:
@@ -57,7 +58,7 @@ class Selector:
 
             return selected if self.multi else (selected[0] if len(selected) > 0 else None)
         except BaseException as e:
-            logging.error(f"failed to select value from [{content} with selector [{self}]")
+            _logger.error(f"failed to select value from [{content} with selector [{self}]")
             raise e
 
     @abstractmethod
