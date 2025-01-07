@@ -221,7 +221,7 @@ class Octopus:
         except BaseException as e:
             r.msg = str(e)
             r.state = RequestState.FAILED
-            self._queue.put(lambda: self._store.update_state(r, RequestState.FAILED, str(e)))
+            self._queue.put(lambda: self._store.update_state(r, RequestState.FAILED, r.msg))
             _logger.exception(f"Process [req = {r}, resp = {res}] error")
         finally:
             self._semaphore.release()

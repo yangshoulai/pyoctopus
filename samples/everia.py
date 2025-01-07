@@ -1,17 +1,20 @@
 import logging
 import os.path
-import sample_logging
+
 import pyoctopus
+import sample_logging
 
 sample_logging.setup()
 _logger = logging.getLogger('pyoctopus.sample.everia')
+
+_ALBUMS_PAGE_REPEATABLE = False
 
 
 @pyoctopus.hyperlink(
     pyoctopus.link(pyoctopus.xpath('//div[@id="blog-entries"]/article//h2/a/@href', multi=True),
                    repeatable=False, priority=2),
     pyoctopus.link(pyoctopus.xpath(
-        '//a[@class="next page-numbers"]/@href', multi=False), repeatable=True, priority=3)
+        '//a[@class="next page-numbers"]/@href', multi=False), repeatable=_ALBUMS_PAGE_REPEATABLE, priority=3)
 )
 class AlbumList:
     pass
@@ -51,4 +54,5 @@ if __name__ == '__main__':
         (pyoctopus.IMAGE, pyoctopus.downloader(os.path.expanduser('~/Downloads/everia'), sub_dir_attr='dir'))
     ]
     pyoctopus.new(processors=processors, sites=sites, threads=3, store=pyoctopus.sqlite_store(
-        os.path.expanduser('~/Downloads/pyoctopus.db'), table='everia')).start(seed)
+        os.path.expanduser('~/Downloads/pyoctopus.db'), table='everia')).start(
+        pyoctopus.request(seed, repeatable=_ALBUMS_PAGE_REPEATABLE))
