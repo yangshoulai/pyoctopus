@@ -1,6 +1,7 @@
 import hashlib
 import logging
 import os
+import queue
 import re
 import threading
 from concurrent.futures import ThreadPoolExecutor, wait, Future, ALL_COMPLETED
@@ -58,7 +59,8 @@ class Octopus:
                  processors: list[tuple[Matcher, Processor]] = None,
                  threads: int = os.cpu_count(),
                  queue_factor: int = 2,
-                 sites: list[Site] = None
+                 sites: list[Site] = None,
+                 retries: int = 1,
                  ):
         self._store = store or memory_store()
         self._seeds = []
@@ -67,6 +69,7 @@ class Octopus:
         self._queue_factor = queue_factor
         if sites:
             self._sites = {s.host: s for s in sites}
+        self.retries = retries
         self._lock = threading.Lock()
         self._semaphore = threading.Semaphore(
             self._queue_factor * self._threads)
@@ -75,11 +78,13 @@ class Octopus:
         self._boss = None
         self._boss_future = None
 
+        self._queue = queue.Queue()
+
         self._state = State.INIT
 
     def start_async(self, *seeds: Request | str) -> Future[None]:
         if not self._set_state(State.STARTING, State.INIT):
-            raise RuntimeError("Octopus is not in INIT state")
+            raise RuntimeError("Pyoctopus is not in INIT state")
         if seeds:
             self._seeds.extend(
                 [Request(s) if isinstance(s, str) else s for s in seeds])
@@ -90,7 +95,7 @@ class Octopus:
         self._workers = ThreadPoolExecutor(max_workers=self._threads, thread_name_prefix="worker")
         self._state = State.STARTED
         self._boss_future = self._boss.submit(self._dispatch)
-        logging.info("Octopus started")
+        logging.info("Pyoctopus started")
         return self._boss_future
 
     def start(self, *seeds: Request | str):
@@ -98,18 +103,18 @@ class Octopus:
 
     def stop(self):
         if not self._set_state(State.STOPPING, State.STARTED):
-            raise RuntimeError("Octopus is not in STARTED state")
+            raise RuntimeError("Pyoctopus is not in STARTED state")
         wait([self._boss_future, *self._workers_futures],
              return_when=ALL_COMPLETED)
         self._boss.shutdown()
         self._workers.shutdown()
         self._state = State.STOPPED
-        logging.info("Octopus stopped")
+        logging.info("Pyoctopus stopped")
 
     def add(self, r: Request, p: Request = None) -> None:
         with self._lock:
             if self._state.value > State.STARTED.value:
-                raise RuntimeError("Octopus is not in STARTED state")
+                raise RuntimeError("Pyoctopus is not in STARTED state")
         if p is not None:
             r.parent = p.id
             r.depth = p.depth + 1
@@ -126,10 +131,12 @@ class Octopus:
         r.state = RequestState.WAITING
         r.msg = '等待处理'
 
-        with self._lock:
+        def _r():
             if r.repeatable or not self._store.exists(r.id):
                 if not self._store.put(r):
                     logging.warning(f"Can not put [{r}] to store")
+
+        self._queue.put(_r)
 
     @property
     def state(self):
@@ -149,12 +156,45 @@ class Octopus:
                 self._semaphore.acquire()
                 self._workers_futures.append(
                     self._workers.submit(self._process, r))
-            else:
-                if len(self._workers_futures) == 0:
+            has_queued_tasks = False
+            while True:
+                try:
+                    r = self._queue.get(False)
+                    if r is not None:
+                        has_queued_tasks = True
+                        r()
+                    else:
+                        break
+                except queue.Empty:
+                    break
+            if r is None and len(self._workers_futures) == 0 and not has_queued_tasks:
+                if not self._retry_fails():
+                    logging.info("No more tasks found, pyoctopus will stop")
                     threading.Thread(target=self.stop).start()
 
         if self._state.value > State.STARTED.value:
             self._log_undone_tasks()
+
+    def _retry_fails(self) -> bool:
+        has_fails = False
+        if self.retries > 0:
+            page = 1
+            page_size = 200
+            count = 0
+            while True:
+                fails = self._store.get_fails(page, page_size)
+                count += len(fails)
+                if fails:
+                    has_fails = True
+                    for fail in fails:
+                        self._store.update_state(fail, RequestState.WAITING, '等待处理')
+                    if len(fails) < page_size:
+                        break
+                else:
+                    break
+            logging.info(f"[{self.retries}]Retry {count} failed requests")
+            self.retries = self.retries - 1
+        return has_fails
 
     def _process(self, r: Request):
         res = None
@@ -174,11 +214,11 @@ class Octopus:
                             self.add(req, r)
             r.msg = '成功处理'
             r.state = RequestState.COMPLETED
-            self._store.update_state(r, RequestState.COMPLETED, '成功处理')
+            self._queue.put(lambda: self._store.update_state(r, RequestState.COMPLETED, '成功处理'))
         except BaseException as e:
             r.msg = str(e)
             r.state = RequestState.FAILED
-            self._store.update_state(r, RequestState.FAILED, str(e))
+            self._queue.put(lambda: self._store.update_state(r, RequestState.FAILED, str(e)))
             logging.exception(f"Process [req = {r}, resp = {res}] error")
         finally:
             self._semaphore.release()
@@ -191,7 +231,7 @@ class Octopus:
             if self._state == expected_state:
                 self._state = new_state
                 logging.debug(
-                    f"Octopus state changed from {expected_state} to {new_state}")
+                    f"Pyoctopus state changed from {expected_state} to {new_state}")
                 return True
             else:
                 return False
@@ -234,5 +274,11 @@ def new(store: Store = None,
         processors: list[tuple[Matcher, Processor]] = None,
         threads: int = os.cpu_count(),
         queue_factor: int = 2,
-        sites: list[Site] = None) -> Octopus:
-    return Octopus(store=store, processors=processors, threads=threads, queue_factor=queue_factor, sites=sites)
+        sites: list[Site] = None,
+        retries: int = 1) -> Octopus:
+    return Octopus(store=store,
+                   processors=processors,
+                   threads=threads,
+                   queue_factor=queue_factor,
+                   sites=sites,
+                   retries=retries)

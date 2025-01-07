@@ -74,6 +74,6 @@ if __name__ == '__main__':
         (matcher.url_matcher(r'.*/app/post/p\?id=(\d+)'), decode_mzt_image_response),
         (matcher.IMAGE, processor.downloader(os.path.expanduser('~/Downloads/mzt'), sub_dir_attr='name'))
     ]
-    octopus = new(processors=processors, sites=sites, threads=1,
+    octopus = new(processors=processors, sites=sites, threads=4,
                   store=store.sqlite_store(os.path.expanduser('~/Downloads/pyoctopus.db'), table='mzt'))
     octopus.start(seed)

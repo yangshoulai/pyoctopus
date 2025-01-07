@@ -20,3 +20,7 @@ class Store:
     @abstractmethod
     def update_state(self, r: Request, state: State, msg: str = None):
         pass
+
+    @abstractmethod
+    def get_fails(self, page: int = 1, page_size: int = 100) -> list[Request]:
+        pass

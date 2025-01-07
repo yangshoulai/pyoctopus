@@ -43,6 +43,7 @@ class SqliteStore(Store):
         self._sql_update_by_id = f'UPDATE {self._table} SET {_COL_UPDATE_BY_ID} WHERE id = ?'
         self._sql_put = f'INSERT INTO {self._table} ({_COL_NAMES}) VALUES ({", ".join(["?" for _ in [_COL_ID, *_COLS]])})'
         self._sql_update_state = f'UPDATE {self._table} SET state = ?, msg = ? WHERE state = ?'
+        self._sql_paged_select = f'SELECT {_COL_NAMES} FROM {self._table} WHERE state = ? LIMIT ? OFFSET ?'
         self._init_table()
 
     def put(self, r: Request) -> bool:
@@ -69,6 +70,23 @@ class SqliteStore(Store):
                 _connection.rollback()
                 raise e
 
+    def _row_to_request(self, row) -> Request:
+        r = Request(row[1],
+                    method=row[2],
+                    priority=row[3],
+                    repeatable=row[4],
+                    data=row[6],
+                    queries=json.loads(row[7]),
+                    headers=json.loads(row[8]),
+                    attrs=json.loads(row[9]), )
+        r.id = row[0]
+        r.parent = row[5]
+        r.state = State(row[10])
+        r.depth = row[11]
+        r.msg = row[12]
+        r.inherit = bool(row[13])
+        return r
+
     def get(self) -> Request | None:
         with sqlite3.connect(self._db) as _connection:
             try:
@@ -76,20 +94,7 @@ class SqliteStore(Store):
                 _cursor.execute(self._sql_get, (State.WAITING.value,))
                 row = _cursor.fetchone()
                 if row is not None:
-                    r = Request(row[1],
-                                method=row[2],
-                                priority=row[3],
-                                repeatable=row[4],
-                                data=row[6],
-                                queries=json.loads(row[7]),
-                                headers=json.loads(row[8]),
-                                attrs=json.loads(row[9]), )
-                    r.id = row[0]
-                    r.parent = row[5]
-                    r.state = State(row[10])
-                    r.depth = row[11]
-                    r.msg = row[12]
-                    r.inherit = bool(row[13])
+                    r = self._row_to_request(row)
                     _cursor.execute(self._sql_update_state_by_id, (State.EXECUTING.value, '正在处理', r.id,))
                     _connection.commit()
                     return r
@@ -128,6 +133,17 @@ class SqliteStore(Store):
                 _cursor.execute(self._sql_create_idx_priority)
                 _cursor.execute(self._sql_update_state, (State.WAITING.value, '等待处理', State.EXECUTING.value))
                 _connection.commit()
+            except sqlite3.Error as e:
+                _connection.rollback()
+                raise e
+
+    def get_fails(self, page: int = 1, page_size: int = 100) -> list[Request]:
+        with sqlite3.connect(self._db) as _connection:
+            try:
+                _cursor = _connection.cursor()
+                _cursor.execute(self._sql_paged_select, (State.FAILED.value, page_size, (page - 1) * page_size))
+                rows = _cursor.fetchall()
+                return [self._row_to_request(r) for r in rows]
             except sqlite3.Error as e:
                 _connection.rollback()
                 raise e
