@@ -45,10 +45,10 @@ if __name__ == '__main__':
     proxy = 'http://127.0.0.1:7890'
     sites = [
         pyoctopus.site('everia.club', proxy=proxy,
-                       limiter=pyoctopus.limiter(1, 1)),
+                       limiter=pyoctopus.limiter(1, 0.1)),
         pyoctopus.site('*',
                        proxy=proxy,
-                       limiter=pyoctopus.limiter(1, 1))
+                       limiter=pyoctopus.limiter(1, 0.1))
     ]
     processors = [
         (pyoctopus.url_matcher(r'.*/category/.*/page/(\d+)'), pyoctopus.extractor(AlbumList)),
