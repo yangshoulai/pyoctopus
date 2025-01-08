@@ -142,14 +142,13 @@ class SqliteStore(Store):
                 _connection.rollback()
                 raise e
 
-    def get_fails(self, page: int = 1, page_size: int = 100) -> list[Request]:
+    def reply_failed(self) -> int:
         with self._get_connection() as _connection:
             try:
                 _cursor = _connection.cursor()
-                _cursor.execute(self._sql_paged_select, (State.FAILED.value, page_size, (page - 1) * page_size))
-                rows = _cursor.fetchall()
+                _cursor.execute(self._sql_update_state, (State.WAITING.value, '等待处理', State.FAILED.value))
                 _connection.commit()
-                return [self._row_to_request(r) for r in rows]
+                return _cursor.rowcount
             except sqlite3.Error as e:
                 _connection.rollback()
                 raise e

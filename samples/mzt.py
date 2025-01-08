@@ -60,7 +60,7 @@ def decode_mzt_image_response(res: Response) -> list[Request]:
 
 
 if __name__ == '__main__':
-    seed = 'https://kkmzt.com/photo/page/1/'
+    seed = 'https://kkmzt.com/photo/123107'
     proxy = 'http://127.0.0.1:7890'
     sites = [
         site('kkmzt.com', proxy=proxy, limiter=limiter(1, 0.75)),
@@ -73,5 +73,7 @@ if __name__ == '__main__':
         (matcher.IMAGE, processor.downloader(os.path.expanduser('~/Downloads/mzt'), sub_dir_attr='name'))
     ]
     octopus = new(processors=processors, sites=sites, threads=4,
-                  store=store.sqlite_store(os.path.expanduser('~/Downloads/pyoctopus.db'), table='mzt'))
+                  store=store.redis_store(prefix='mzt', password='123456'),
+                  # store=store.sqlite_store(os.path.expanduser('~/Downloads/pyoctopus.db'), table='mzt')
+                  )
     octopus.start(seed)

@@ -181,21 +181,10 @@ class Octopus:
     def _retry_fails(self) -> bool:
         has_fails = False
         if self.retries > 0:
-            page = 1
-            page_size = 200
-            count = 0
-            while True:
-                fails = self._store.get_fails(page, page_size)
-                count += len(fails)
-                if fails:
-                    has_fails = True
-                    for fail in fails:
-                        self._store.update_state(fail, RequestState.WAITING, '等待处理')
-                    if len(fails) < page_size:
-                        break
-                else:
-                    break
-            _logger.info(f"[{self.retries}] Retry {count} failed requests")
+            count = self._store.reply_failed()
+            if count > 0:
+                has_fails = True
+                _logger.info(f"[{self.retries}] Retry {count} failed requests")
             self.retries = self.retries - 1
         return has_fails
 

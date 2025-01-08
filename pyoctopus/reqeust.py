@@ -1,3 +1,4 @@
+import json
 from enum import Enum
 from typing import Any
 
@@ -52,6 +53,43 @@ class Request:
 
     def __str__(self):
         return f'{{id={self.id}, url={self.url}, priority={self.priority}, depth={self.depth}}}'
+
+    def to_json(self) -> str:
+        return json.dumps({
+            'id': self.id,
+            'url': self.url,
+            'method': self.method,
+            'queries': self.queries,
+            'data': self.data,
+            'headers': self.headers,
+            'priority': self.priority,
+            'repeatable': self.repeatable,
+            'attrs': self.attrs,
+            'inherit': self.inherit,
+            'parent': self.parent,
+            'state': self.state.value,
+            'msg': self.msg,
+            'depth': self.depth
+        })
+
+    @staticmethod
+    def from_json(json_str: str) -> 'Request':
+        json_object = json.loads(json_str)
+        req = Request(json_object['url'])
+        req.id = json_object['id']
+        req.method = json_object['method']
+        req.queries = json_object['queries']
+        req.data = json_object['data']
+        req.headers = json_object['headers']
+        req.priority = json_object['priority']
+        req.repeatable = json_object['repeatable']
+        req.attrs = json_object['attrs']
+        req.inherit = json_object['inherit']
+        req.parent = json_object['parent']
+        req.state = State(json_object['state'])
+        req.msg = json_object['msg']
+        req.depth = json_object['depth']
+        return req
 
     __repr__ = __str__
 
