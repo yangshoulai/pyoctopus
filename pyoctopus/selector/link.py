@@ -53,7 +53,7 @@ def link(selector: Selector, method: str = 'GET',
          repeatable: bool = True,
          attr_props: list[str] = None,
          inherit: bool = False,
-         terminable: Terminable) -> Link:
+         terminable: Terminable = None) -> Link:
     return Link(selector,
                 method,
                 queries=queries,
