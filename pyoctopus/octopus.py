@@ -174,6 +174,7 @@ class Octopus:
                         if not self._retry_fails():
                             _logger.info("No more tasks found, pyoctopus will stop")
                             threading.Thread(target=self.stop, name="StopThread").start()
+                            break
         if self._state.value > State.STARTED.value:
             self._log_undone_tasks()
 

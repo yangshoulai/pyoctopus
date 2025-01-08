@@ -7,10 +7,14 @@ from ..response import Response
 from ..types import Processor
 
 
-def new(base_dir: str = os.path.expanduser('~/Downloads'), *, sub_dir_attr: str = None,
+def new(base_dir: str = os.path.expanduser('~/Downloads'), *, sub_dir_attr: str | list[str] = None,
         filename_attr: str = None) -> Processor:
     def process(res: Response) -> List[Request]:
-        d = os.path.join(base_dir, res.request.get_attr(sub_dir_attr)) if sub_dir_attr else base_dir
+        if sub_dir_attr is not None:
+            dir_attrs = sub_dir_attr if isinstance(sub_dir_attr, list) else [sub_dir_attr]
+        else:
+            dir_attrs = []
+        d = os.path.join(base_dir, *[str(res.request.get_attr(attr)) for attr in dir_attrs]) if dir_attrs else base_dir
         n = res.request.get_attr(filename_attr) if filename_attr else None
         if not n:
             disposition = res.headers.get('Content-Disposition', None)
