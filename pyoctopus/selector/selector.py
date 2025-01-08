@@ -111,6 +111,8 @@ def select(content: str, resp: Response, result_class: type, links: list[Request
 
     if PROP_LINKS in r.__dict__:
         for link in r.__dict__[PROP_LINKS]:
+            if link.terminable and link.terminable(r, content, resp):
+                continue
             requests = []
             l = link.selector.select(content, resp)
             if l:

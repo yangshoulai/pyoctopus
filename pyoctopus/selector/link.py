@@ -1,6 +1,7 @@
 import functools
 
 from .selector import Selector, R, PROP_LINKS
+from .. import Terminable
 
 
 class Link:
@@ -14,7 +15,8 @@ class Link:
                  priority: int = 0,
                  repeatable: bool = True,
                  attr_props: list[str] = None,
-                 inherit: bool = False):
+                 inherit: bool = False,
+                 terminable: Terminable = None):
         self.selector = selector
         self.method = method
         self.queries = {} if queries is None else queries
@@ -24,6 +26,7 @@ class Link:
         self.repeatable = repeatable
         self.attr_props = attr_props
         self.inherit = inherit
+        self.terminable = terminable
 
 
 class Hyperlink:
@@ -49,6 +52,15 @@ def link(selector: Selector, method: str = 'GET',
          priority: int = 0,
          repeatable: bool = True,
          attr_props: list[str] = None,
-         inherit: bool = False) -> Link:
-    return Link(selector, method, queries=queries, data=data, headers=headers, priority=priority,
-                repeatable=repeatable, attr_props=attr_props, inherit=inherit)
+         inherit: bool = False,
+         terminable: Terminable) -> Link:
+    return Link(selector,
+                method,
+                queries=queries,
+                data=data,
+                headers=headers,
+                priority=priority,
+                repeatable=repeatable,
+                attr_props=attr_props,
+                inherit=inherit,
+                terminable=terminable)

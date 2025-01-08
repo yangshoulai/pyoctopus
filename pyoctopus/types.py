@@ -12,3 +12,5 @@ Matcher = TypeVar('Matcher', bound=[Callable[[Response], bool]])
 Processor = TypeVar('Processor', bound=[Callable[[Response], list[Request]]])
 
 Collector = TypeVar('Collector', bound=[Callable[[R], None]])
+
+Terminable = TypeVar('Terminable', bound=[Callable[[R, str, Response], bool]])

@@ -6,7 +6,7 @@ from .response import Response
 from .response import new as response
 from .limiter import new as limiter
 from .octopus import new
-from .types import R, Converter, Collector, Processor, Matcher
+from .types import R, Converter, Collector, Processor, Matcher, Terminable
 
 from .converter import *
 from .selector import *

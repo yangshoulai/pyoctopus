@@ -1,8 +1,6 @@
-import sample_logging
 import os
 
 import pyoctopus
-
 import sample_logging
 
 sample_logging.setup()
@@ -21,9 +19,13 @@ class ProjectDetails:
 
 
 @pyoctopus.hyperlink(
-    pyoctopus.link(pyoctopus.xpath("//a[@rel='next'][position()=2]/@href"), repeatable=False, priority=1))
+    pyoctopus.link(pyoctopus.xpath("//a[@rel='next'][position()=2]/@href"),
+                   repeatable=False,
+                   priority=1,
+                   terminable=lambda x, _, __: x.page == 2))
 class ProjectList:
     projects = pyoctopus.embedded(pyoctopus.css('.items .item', multi=True), ProjectDetails)
+    page = pyoctopus.query('page', converter=pyoctopus.int_converter())
 
 
 def collect(res):
@@ -40,7 +42,6 @@ excel_collector = pyoctopus.excel_collector(os.path.expanduser('~/Downloads/gite
     pyoctopus.excel_column('description', '简介')
 ])
 
-logging.basicConfig(level=logging.INFO)
 if __name__ == '__main__':
     seed = 'https://gitee.com/explore/all?order=starred'
     sites = [
