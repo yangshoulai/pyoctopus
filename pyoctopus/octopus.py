@@ -107,7 +107,7 @@ class Octopus:
         self._state = State.STOPPED
         stat = self._store.get_statistics()
         _logger.info(
-            f"Pyoctopus stats: all = {stat[0]}, waiting = {stat[1]}, completed = {stat[2]}, failed = {stat[3]}")
+            f"Pyoctopus stats: all = {stat[0]}, waiting = {stat[1]}, executing = {stat[2]}, completed = {stat[3]}, failed = {stat[4]}")
         _logger.info("Pyoctopus stopped")
 
     def add(self, r: Request) -> None:
@@ -243,8 +243,13 @@ class Octopus:
                 'http': site.proxy,
                 'https': site.proxy
             }
-        r = requests.request(request.method, request.url, params=request.queries, data=request.data,
-                             headers=h, proxies=p)
+        r = requests.request(request.method,
+                             request.url,
+                             params=request.queries,
+                             data=request.data,
+                             headers=h,
+                             proxies=p,
+                             timeout=site.timeout)
         _res = Response(request)
         _res.status = r.status_code
         _res.content = r.content

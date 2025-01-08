@@ -18,6 +18,7 @@ class _MemoryStore(Store):
         self._queue = queue.PriorityQueue()
         self._all = {}
         self._fails = []
+        self._executing = set()
         self._completed = set()
 
     def put(self, r: Request) -> bool:
@@ -28,7 +29,12 @@ class _MemoryStore(Store):
     def get(self) -> Request | None:
         try:
             r = self._queue.get(False)
-            return self._all[r.id] if r else None
+            req = self._all[r.id] if r else None
+            if req:
+                req.state = State.EXECUTING
+                req.msg = '正在处理'
+                self._executing.add(r.id)
+            return req
         except queue.Empty:
             return None
 
@@ -36,11 +42,14 @@ class _MemoryStore(Store):
         if state == State.COMPLETED:
             self._completed.add(r.id)
             self._fails = [f for f in self._fails if f != r.id]
+            self._executing.discard(r.id)
         elif state == State.FAILED:
             self._fails.append(r.id)
             self._completed.discard(r.id)
+            self._executing.discard(r.id)
         elif state == State.WAITING:
             self._completed.discard(r.id)
+            self._executing.discard(r.id)
             self._fails = [f for f in self._fails if f != r.id]
             self._queue.put(_Wrapper(r.id, r.priority))
         else:
@@ -52,8 +61,8 @@ class _MemoryStore(Store):
     def get_fails(self, page: int = 1, page_size: int = 100) -> list[Request]:
         return [self._all[f] for f in self._fails[page_size * (page - 1):page_size * page]]
 
-    def get_statistics(self) -> (int, int, int, int):
-        return len(self._all), self._queue.qsize(), len(self._completed), len(self._fails)
+    def get_statistics(self) -> (int, int, int, int, int):
+        return len(self._all), self._queue.qsize(), len(self._executing), len(self._completed), len(set(self._fails))
 
 
 def new() -> Store:

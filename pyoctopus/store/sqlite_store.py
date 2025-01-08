@@ -97,6 +97,8 @@ class SqliteStore(Store):
                 row = _cursor.fetchone()
                 if row is not None:
                     r = self._row_to_request(row)
+                    r.state = State.EXECUTING
+                    r.msg = '正在处理'
                     _cursor.execute(self._sql_update_state_by_id, (State.EXECUTING.value, '正在处理', r.id,))
                     return r
                 _connection.commit()
@@ -165,12 +167,14 @@ class SqliteStore(Store):
                 all = _cursor.fetchone()[0]
                 _cursor.execute(self._sql_count_by_state, (State.WAITING.value,))
                 waiting = _cursor.fetchone()[0]
+                _cursor.execute(self._sql_count_by_state, (State.EXECUTING.value,))
+                executing = _cursor.fetchone()[0]
                 _cursor.execute(self._sql_count_by_state, (State.COMPLETED.value,))
                 completed = _cursor.fetchone()[0]
                 _cursor.execute(self._sql_count_by_state, (State.FAILED.value,))
                 failed = _cursor.fetchone()[0]
                 _connection.commit()
-                return all, waiting, completed, failed
+                return all, waiting, executing, completed, failed
             except sqlite3.Error as e:
                 _connection.rollback()
                 raise e
