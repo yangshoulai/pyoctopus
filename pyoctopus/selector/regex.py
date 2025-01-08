@@ -8,7 +8,7 @@ from ..types import Converter
 class Regex(Selector):
     def __init__(self,
                  expr: str,
-                 group: int = 0,
+                 group: int | list[int] = 0,
                  selector: Selector = None,
                  *,
                  multi=False,
@@ -23,15 +23,15 @@ class Regex(Selector):
                                     filter_empty=filter_empty,
                                     format_str=format_str,
                                     converter=converter)
-        self.group = group
+        self.group = group if isinstance(group, list) else [group]
 
     def do_select(self, content: str, resp: Response) -> list[str]:
         matches = re.finditer(self.expr, content)
-        return [x.group(self.group) for x in matches]
+        return [(''.join([x.group(g) for g in self.group])) for x in matches]
 
 
 def new(expr: str,
-        group: int = 0,
+        group: int | list[int] = 0,
         selector: Selector = None,
         *,
         multi=False,
