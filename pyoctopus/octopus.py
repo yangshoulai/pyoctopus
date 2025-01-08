@@ -73,8 +73,7 @@ class Octopus:
             self._sites = {s.host: s for s in sites}
         self.retries = retries
         self._lock = threading.Lock()
-        self._semaphore = threading.Semaphore(
-            self._queue_factor * self._threads)
+        self._semaphore = threading.Semaphore(self._queue_factor * self._threads)
         self._workers = None
         self._workers_futures = []
         self._boss = None
@@ -85,17 +84,15 @@ class Octopus:
     def start_async(self, *seeds: Request | str) -> Future[None]:
         if not self._set_state(State.STARTING, State.INIT):
             raise RuntimeError("Pyoctopus is not in INIT state")
-        if seeds:
-            self._seeds.extend(
-                [Request(s) if isinstance(s, str) else s for s in seeds])
         self._state = State.STARTING
-        for s in self._seeds:
-            self.add(s)
+        self._seeds.extend([Request(s) if isinstance(s, str) else s for s in seeds])
+        for seed in self._seeds:
+            self._add(seed)
         self._boss = ThreadPoolExecutor(max_workers=1, thread_name_prefix="boss")
         self._workers = ThreadPoolExecutor(max_workers=self._threads, thread_name_prefix="worker")
-        self._state = State.STARTED
         self._boss_future = self._boss.submit(self._dispatch)
         _logger.info("Pyoctopus started")
+        self._state = State.STARTED
         return self._boss_future
 
     def start(self, *seeds: Request | str):
@@ -104,21 +101,22 @@ class Octopus:
     def stop(self):
         if not self._set_state(State.STOPPING, State.STARTED):
             raise RuntimeError("Pyoctopus is not in STARTED state")
-        wait([self._boss_future, *self._workers_futures],
-             return_when=ALL_COMPLETED)
+        wait([self._boss_future, *self._workers_futures], return_when=ALL_COMPLETED)
         self._boss.shutdown()
         self._workers.shutdown()
         self._state = State.STOPPED
-
         stat = self._store.get_statistics()
         _logger.info(
             f"Pyoctopus stats: all = {stat[0]}, waiting = {stat[1]}, completed = {stat[2]}, failed = {stat[3]}")
         _logger.info("Pyoctopus stopped")
 
-    def add(self, r: Request, p: Request = None) -> None:
+    def add(self, r: Request) -> None:
         with self._lock:
             if self._state.value > State.STARTED.value:
-                raise RuntimeError("Pyoctopus is not in STARTED state")
+                raise RuntimeError(f"Pyoctopus is in {self._state} state")
+        self._add(r)
+
+    def _add(self, r: Request, p: Request = None) -> None:
         if p is not None:
             r.parent = p.id
             r.depth = p.depth + 1
@@ -149,17 +147,6 @@ class Octopus:
 
     def _dispatch(self) -> None:
         while True:
-            with self._lock:
-                if self._state.value >= State.STOPPING.value:
-                    break
-            self._workers_futures = [
-                f for f in self._workers_futures if not f.done()]
-            r = self._store.get()
-            if r is not None:
-                _logger.info(f"Take {r}")
-                self._semaphore.acquire()
-                self._workers_futures.append(
-                    self._workers.submit(self._process, r))
             has_queued_tasks = False
             while True:
                 try:
@@ -171,11 +158,22 @@ class Octopus:
                         break
                 except queue.Empty:
                     break
-            if r is None and len(self._workers_futures) == 0 and not has_queued_tasks:
-                if not self._retry_fails():
-                    _logger.info("No more tasks found, pyoctopus will stop")
-                    threading.Thread(target=self.stop, name="StopThread").start()
+            self._workers_futures = [f for f in self._workers_futures if not f.done()]
 
+            with self._lock:
+                if self._state.value >= State.STOPPING.value:
+                    if not has_queued_tasks and len(self._workers_futures) == 0:
+                        break
+                else:
+                    r = self._store.get()
+                    if r is not None:
+                        _logger.info(f"Take {r}")
+                        self._semaphore.acquire()
+                        self._workers_futures.append(self._workers.submit(self._process, r))
+                    if r is None and len(self._workers_futures) == 0 and not has_queued_tasks:
+                        if not self._retry_fails():
+                            _logger.info("No more tasks found, pyoctopus will stop")
+                            threading.Thread(target=self.stop, name="StopThread").start()
         if self._state.value > State.STARTED.value:
             self._log_undone_tasks()
 
@@ -210,11 +208,9 @@ class Octopus:
             if res.status != 200:
                 raise ValueError("Bad http status [%s] for [%s]", res.status, r)
             for [m, p] in self._processors:
-                if m(res):
-                    new_requests = p(res)
-                    for req in new_requests:
-                        if self._state.value < State.STOPPING.value:
-                            self.add(req, r)
+                if m and m(res):
+                    for req in p(res):
+                        self._add(req, r)
             r.msg = '成功处理'
             r.state = RequestState.COMPLETED
             self._queue.put(lambda: self._store.update_state(r, RequestState.COMPLETED, '成功处理'))
