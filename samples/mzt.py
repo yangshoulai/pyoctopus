@@ -73,7 +73,7 @@ if __name__ == '__main__':
         (matcher.IMAGE, processor.downloader(os.path.expanduser('~/Downloads/mzt'), sub_dir_attr='name'))
     ]
     octopus = new(processors=processors, sites=sites, threads=4,
-                  store=store.redis_store(prefix='mzt', password='123456'),
+                  # store=store.redis_store(prefix='mzt', password='123456'),
                   # store=store.sqlite_store(os.path.expanduser('~/Downloads/pyoctopus.db'), table='mzt')
                   )
     octopus.start(seed)
