@@ -196,7 +196,7 @@ class Octopus:
                 site.limiter.acquire()
             res = Octopus._download(r, site)
             if res.status != 200:
-                raise ValueError("Bad http status [%s] for [%s]", res.status, r)
+                raise ValueError(f"Bad http status [{res.status}] for [{r}]")
             for [m, p] in self._processors:
                 if m and m(res):
                     for req in p(res):
