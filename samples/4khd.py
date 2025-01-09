@@ -64,17 +64,17 @@ def get_all_pages(res: Response) -> list[Request]:
 
 
 if __name__ == '__main__':
-    seed = 'https://sjurj.xxtt.info/search/黑丝/page/1'
+    seed = 'https://sjurj.xxtt.info/search/jvid/page/1'
     proxy = 'http://127.0.0.1:7890'
     sites = [
-        pyoctopus.site('sjurj.xxtt.info', proxy=proxy, limiter=pyoctopus.limiter(1, 0.25)),
-        pyoctopus.site('*.4khd.*', proxy=proxy, limiter=pyoctopus.limiter(1, 0.25)),
-        pyoctopus.site('*.wp.com', proxy=proxy, limiter=pyoctopus.limiter(1, 0.25))
+        pyoctopus.site('sjurj.xxtt.info', proxy=proxy, limiter=pyoctopus.limiter(0.25)),
+        pyoctopus.site('*.4khd.*', proxy=proxy, limiter=pyoctopus.limiter(0.25)),
+        pyoctopus.site('*.wp.com', proxy=proxy, limiter=pyoctopus.limiter(0.25))
     ]
     store = pyoctopus.store.sqlite_store(os.path.expanduser('~/Downloads/pyoctopus.db'), table='xxtt')
     processors = [
-        (pyoctopus.or_matcher(pyoctopus.url_matcher(r'.*/pages/.*\?query-3-page=1'),
-                              pyoctopus.url_matcher(r'.*/search/.*/page/1')), get_all_pages),
+        (pyoctopus.or_matcher(pyoctopus.url_matcher(r'^.*/pages/.*\?query-3-page=1$'),
+                              pyoctopus.url_matcher(r'^.*/search/.*/page/1$')), get_all_pages),
         (pyoctopus.or_matcher(pyoctopus.url_matcher(r'.*/pages/.*\?query-3-page=\d+'),
                               pyoctopus.url_matcher(r'.*/search/.*/page/\d+')), pyoctopus.extractor(AlbumList)),
         (pyoctopus.url_matcher(r'.*/content/\d+/.*'), pyoctopus.extractor(AlbumDetails)),

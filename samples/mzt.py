@@ -63,8 +63,8 @@ if __name__ == '__main__':
     seed = 'https://kkmzt.com/photo/123107'
     proxy = 'http://127.0.0.1:7890'
     sites = [
-        site('kkmzt.com', proxy=proxy, limiter=limiter(1, 0.75)),
-        site('*.meizitu.*', proxy=proxy, limiter=limiter(1, 0.75))
+        site('kkmzt.com', proxy=proxy, limiter=limiter(0.75)),
+        site('*.meizitu.*', proxy=proxy, limiter=limiter(0.75))
     ]
     processors = [
         (matcher.url_matcher(r'.*/photo/page/.*'), processor.extractor(AlbumList)),

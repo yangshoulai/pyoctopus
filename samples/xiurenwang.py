@@ -32,17 +32,14 @@ if __name__ == '__main__':
     seed = 'https://xiurenwang.me/?page=1'
     proxy = 'http://127.0.0.1:7890'
     sites = [
-        pyoctopus.site('xiurenwang.me', proxy=proxy,
-                       limiter=pyoctopus.limiter(1, 0.5)),
-        pyoctopus.site('*.xchina.*', proxy=proxy,
-                       limiter=pyoctopus.limiter(1, 0.5))
+        pyoctopus.site('xiurenwang.me', proxy=proxy, limiter=pyoctopus.limiter(0.5)),
+        pyoctopus.site('*.xchina.*', proxy=proxy, limiter=pyoctopus.limiter(0.5))
     ]
     processors = [
         (pyoctopus.url_matcher(r'.*/\?page=(\d+)'), pyoctopus.extractor(AlbumList)),
         (pyoctopus.url_matcher(r'.*/photo.php\?id=.*'),
          pyoctopus.extractor(AlbumDetails, collector=pyoctopus.logging_collector())),
-        (pyoctopus.IMAGE, pyoctopus.downloader(os.path.expanduser(
-            '~/Downloads/xiurenwang'), sub_dir_attr='name'))
+        (pyoctopus.IMAGE, pyoctopus.downloader(os.path.expanduser('~/Downloads/xiurenwang'), sub_dir_attr='name'))
     ]
     pyoctopus.new(processors=processors, sites=sites, threads=2, store=pyoctopus.sqlite_store(
         os.path.expanduser('~/Downloads/pyoctopus.db'), table='xiuirenwang')).start(seed)

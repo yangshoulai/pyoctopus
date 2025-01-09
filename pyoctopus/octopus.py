@@ -208,7 +208,7 @@ class Octopus:
             r.msg = str(e)
             r.state = RequestState.FAILED
             self._queue.put(lambda: self._store.update_state(r, RequestState.FAILED, r.msg))
-            _logger.exception(f"Process [req = {r}, resp = {res}] error")
+            _logger.error(f"Process [req = {r}, resp = {res}] error\n{r.msg}")
         finally:
             self._semaphore.release()
 
@@ -226,26 +226,29 @@ class Octopus:
 
     @staticmethod
     def _download(request: Request, site: Site) -> Response:
-        h = {**_DEFAULT_HEADERS, **site.headers, **request.headers}
-        p = {}
-        if site.proxy:
-            p = {
-                'http': site.proxy,
-                'https': site.proxy
-            }
-        r = requests.request(request.method,
-                             request.url,
-                             params=request.queries,
-                             data=request.data,
-                             headers=h,
-                             proxies=p,
-                             timeout=site.timeout)
-        _res = Response(request)
-        _res.status = r.status_code
-        _res.content = r.content
-        _res.headers = {k: v for k, v in r.headers.items()}
-        _res.encoding = r.encoding or site.encoding or 'utf-8'
-        return _res
+        try:
+            h = {**_DEFAULT_HEADERS, **site.headers, **request.headers}
+            p = {}
+            if site.proxy:
+                p = {
+                    'http': site.proxy,
+                    'https': site.proxy
+                }
+            r = requests.request(request.method,
+                                 request.url,
+                                 params=request.queries,
+                                 data=request.data,
+                                 headers=h,
+                                 proxies=p,
+                                 timeout=site.timeout)
+            _res = Response(request)
+            _res.status = r.status_code
+            _res.content = r.content
+            _res.headers = {k: v for k, v in r.headers.items()}
+            _res.encoding = r.encoding or site.encoding or 'utf-8'
+            return _res
+        except BaseException as e:
+            raise RuntimeError(str(e))
 
     def _get_site(self, host: str) -> Site:
         if host in self._sites:

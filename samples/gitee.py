@@ -45,11 +45,10 @@ excel_collector = pyoctopus.excel_collector(os.path.expanduser('~/Downloads/gite
 if __name__ == '__main__':
     seed = 'https://gitee.com/explore/all?order=starred'
     sites = [
-        pyoctopus.site('gitee.com', limiter=pyoctopus.limiter(interval_in_seconds=1))
+        pyoctopus.site('gitee.com', limiter=pyoctopus.limiter(1))
     ]
     processors = [
-        (pyoctopus.url_matcher(r'.*/explore/all\?order=starred.*'),
-         pyoctopus.extractor(ProjectList, collector=collect))
+        (pyoctopus.url_matcher(r'.*/explore/all\?order=starred.*'), pyoctopus.extractor(ProjectList, collector=collect))
     ]
     octopus = pyoctopus.new(processors=processors, sites=sites, threads=4)
     octopus.start(seed)

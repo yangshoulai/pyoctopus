@@ -57,7 +57,7 @@ def collect(movie):
 
 
 if __name__ == '__main__':
-    sites = [pyoctopus.site('*.douban.com', limiter=pyoctopus.limiter(1, 2),
+    sites = [pyoctopus.site('*.douban.com', limiter=pyoctopus.limiter(2),
                             headers={
                                 'Cookie':
                                     'bid=yicCcYhs54g; _pk_id.100001.4cf6=01a72de6dae49fa9.1735540670.; ll="118159"; _vwo_uuid_v2=D419D8996E4C1053ECC587950BC59112A|a05f2eb1bab00d520f398d30ca0b282d; __utmc=30149280; __utmc=223695111; dbcl2="142644688:5lmuuXqB8lk"; ck=eW3a; _pk_ref.100001.4cf6=%5B%22%22%2C%22%22%2C1735795936%2C%22https%3A%2F%2Fopen.weixin.qq.com%2F%22%5D; _pk_ses.100001.4cf6=1; __utma=30149280.1215891002.1724233909.1735787308.1735795937.6; __utmb=30149280.0.10.1735795937; __utmz=30149280.1735795937.6.3.utmcsr=open.weixin.qq.com|utmccn=(referral)|utmcmd=referral|utmcct=/; __utma=223695111.1198329190.1735540670.1735787308.1735795937.4; __utmb=223695111.0.10.1735795937; __utmz=223695111.1735795937.4.2.utmcsr=open.weixin.qq.com|utmccn=(referral)|utmcmd=referral|utmcct=/; push_noty_num=0; push_doumail_num=0'

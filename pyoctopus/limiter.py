@@ -4,7 +4,7 @@ from time import sleep
 
 
 class Limiter:
-    def __init__(self, capacity: int, interval_in_seconds: float):
+    def __init__(self, interval_in_seconds: float, capacity: int):
         self._capacity = capacity
         self._interval = interval_in_seconds
         self._count = 0
@@ -36,5 +36,5 @@ class Limiter:
             return self._acquire(end_time)
 
 
-def new(capacity: int = 1, interval_in_seconds: float = 1) -> Limiter:
-    return Limiter(capacity, interval_in_seconds)
+def new(interval_in_seconds: float = 1, capacity: int = 1) -> Limiter:
+    return Limiter(interval_in_seconds, capacity)
