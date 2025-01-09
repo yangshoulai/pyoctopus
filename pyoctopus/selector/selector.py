@@ -54,8 +54,10 @@ class Selector:
                 selected = [self.format_str.format(x) for x in selected]
 
             if self.converter:
-                selected = [self.converter(x) for x in selected]
-
+                if self.multi:
+                    selected = [self.converter(x) for x in selected]
+                else:
+                    selected = [self.converter(selected[0]) if len(selected) > 0 else self.converter(None)]
             return selected if self.multi else (selected[0] if len(selected) > 0 else None)
         except BaseException as e:
             _logger.error(f"failed to select value from [{content} with selector [{self}]")
