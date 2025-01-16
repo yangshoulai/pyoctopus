@@ -2,14 +2,16 @@ from setuptools import setup, find_packages
 
 setup(
     name='pyoctopus',                    # 库的名称
-    version='0.1.1',                     # 库的版本
+    version='0.1.2',                     # 库的版本
     packages=find_packages(),            # 自动查找并包含所有模块
     install_requires=[                   # 项目的依赖包
         'requests',                      # 示例依赖
         'beautifulsoup4',
         'jsonpath_ng',
         'lxml',
-        'tornado'
+        'tornado',
+        'redis',
+        'openpyxl'
     ],
     author='yangshoulai',                  # 作者信息
     author_email='shoulai.yang@gmail.com',  # 作者邮箱
