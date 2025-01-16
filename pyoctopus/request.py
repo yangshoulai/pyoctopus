@@ -32,8 +32,10 @@ class Request:
         self.queries = {}
         if queries:
             for k, v in queries.items():
-                if isinstance(v, str):
+                if not isinstance(v, list):
                     self.queries[k] = [str(v)]
+                else:
+                    self.queries[k] = v
         self.data = data
         self.headers = {} if headers is None else headers
         self.priority = priority

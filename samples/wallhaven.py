@@ -62,18 +62,16 @@ def _process_search_response(resp: pyoctopus.Response):
     requests = []
 
     def _collect(w: WallpaperSearchResponse):
-        if w.current_page == 1 and w.last_page > 1:
-            requests.extend(
-                [
-                    pyoctopus.request(
-                        f"https://wallhaven.cc/api/v1/search", priority=1,
-                        queries={**WALLHAVEN_API_QUERIES, "page": i}
-                    )
-                    for i in range(2, w.last_page + 1)
-                ]
+        if w.last_page > w.current_page:
+            requests.append(
+                pyoctopus.request(
+                    f"https://wallhaven.cc/api/v1/search", priority=1,
+                    queries={**WALLHAVEN_API_QUERIES, "page": w.current_page + 1}
+                )
             )
 
-    requests.extend(pyoctopus.extractor(WallpaperSearchResponse, _collect)(resp))
+    wallpapers = pyoctopus.extractor(WallpaperSearchResponse, _collect)(resp)
+    requests.extend(wallpapers)
     return requests
 
 
