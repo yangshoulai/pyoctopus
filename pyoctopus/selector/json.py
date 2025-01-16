@@ -1,7 +1,8 @@
 from .selector import Selector
 from .. import Response
 from ..types import Converter
-
+import json as j
+from jsonpath_ng import parse
 
 class Json(Selector):
     def __init__(self,
@@ -22,7 +23,7 @@ class Json(Selector):
                                    converter=converter)
 
     def do_select(self, content: str, resp: Response) -> list[str]:
-        from jsonpath_ng import parse
+        
         matches = parse(self.expr).find(j.loads(content))
         return [x.value for x in matches]
 

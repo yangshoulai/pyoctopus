@@ -133,6 +133,62 @@ pyoctopus/
 4. 做好异常处理和日志记录
 5. 合理设置线程数量
 
+## 开发指南
+
+### 打包项目
+
+1. 安装打包工具
+
+```bash
+pip install build twine
+```
+
+2. 构建项目
+
+```bash
+python3 setup.py sdist bdist_wheel
+```
+
+这将在 `dist/` 目录下生成源码包（.tar.gz）和轮子包（.whl）。
+
+3. 清理构建文件
+
+```bash
+# 清理构建文件
+python3 setup.py clean --all   # 清理 build 目录
+rm -rf dist/                   # 删除 dist 目录
+rm -rf *.egg-info/            # 删除 egg-info 目录
+```
+
+### 发布到 PyPI
+
+1. 注册 PyPI 账号
+   访问 [PyPI](https://pypi.org/) 注册账号。
+
+2. 创建 API Token
+   在 PyPI 账号设置中创建 API Token，用于发布认证。
+
+3. 配置认证信息
+   创建或编辑 `~/.pypirc` 文件：
+
+```ini
+[pypi]
+username = __token__
+password = your-api-token
+```
+
+4. 上传到 PyPI
+
+```bash
+twine upload dist/*
+```
+
+5. 验证安装
+
+```bash
+pip install pyoctopus
+```
+
 ## 贡献指南
 
 欢迎提交 Pull Request 或 Issue。详见 [CONTRIBUTING.md](CONTRIBUTING.md)
