@@ -2,7 +2,7 @@ import os
 from typing import List
 from urllib.parse import urlparse
 
-from ..reqeust import Request
+from ..request import Request
 from ..response import Response
 from ..types import Processor
 

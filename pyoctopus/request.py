@@ -14,7 +14,7 @@ class State(Enum):
 class Request:
     def __init__(self, url: str, method: str = 'GET',
                  *,
-                 queries: dict[str, list[str]] = None,
+                 queries: dict[str, list[Any] | Any] = None,
                  data: str = None,
                  headers: dict[str, str] = None,
                  priority: int = 0,
@@ -29,7 +29,11 @@ class Request:
             raise ValueError('method can only be GET or POST')
         self.url = url
         self.method = method
-        self.queries = {} if queries is None else queries
+        self.queries = {}
+        if queries:
+            for k, v in queries.items():
+                if isinstance(v, str):
+                    self.queries[k] = [str(v)]
         self.data = data
         self.headers = {} if headers is None else headers
         self.priority = priority
@@ -96,7 +100,7 @@ class Request:
 
 def new(url: str, method: str = 'GET',
         *,
-        queries: dict[str, list[str]] = None,
+        queries: dict[str, list[Any] | Any] = None,
         data: str = None,
         headers: dict[str, str] = None,
         priority: int = 0,

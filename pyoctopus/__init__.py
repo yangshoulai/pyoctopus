@@ -1,7 +1,7 @@
 from .site import new as site
 
-from .reqeust import Request
-from .reqeust import new as request
+from .request import Request
+from .request import new as request
 from .response import Response
 from .response import new as response
 from .limiter import new as limiter

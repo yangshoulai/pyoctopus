@@ -10,7 +10,7 @@ from urllib.parse import urljoin, urlencode, parse_qs, urlparse
 
 import requests
 
-from .reqeust import Request, State as RequestState
+from .request import Request, State as RequestState
 from .response import Response
 from .site import Site
 from .store import Store, memory_store
@@ -208,7 +208,7 @@ class Octopus:
             r.msg = str(e)
             r.state = RequestState.FAILED
             self._queue.put(lambda: self._store.update_state(r, RequestState.FAILED, r.msg))
-            _logger.error(f"Process [req = {r}, resp = {res}] error\n{r.msg}")
+            _logger.error(f"Process [req = {r}, resp = {res}] error\n{r.msg}", exc_info=True)
         finally:
             self._semaphore.release()
 

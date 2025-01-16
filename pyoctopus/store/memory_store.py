@@ -1,7 +1,7 @@
 import queue
 
 from .store import Store
-from ..reqeust import Request, State
+from ..request import Request, State
 
 
 class _Wrapper:

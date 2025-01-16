@@ -1,7 +1,7 @@
 import logging
 from typing import Type, List
 
-from ..reqeust import Request
+from ..request import Request
 from ..response import Response
 from ..selector import select
 from ..types import Collector, Processor, R

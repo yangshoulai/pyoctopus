@@ -3,7 +3,7 @@ import sqlite3
 import threading
 
 from .store import Store
-from ..reqeust import Request, State
+from ..request import Request, State
 
 _COL_ID = ('id', 'TEXT PRIMARY KEY')
 _COLS = [

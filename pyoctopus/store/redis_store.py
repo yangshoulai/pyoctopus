@@ -3,7 +3,7 @@ import re
 import redis
 
 from .store import Store
-from ..reqeust import State, Request
+from ..request import State, Request
 
 
 class RedisStore(Store):
