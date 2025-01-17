@@ -2,6 +2,7 @@ import os
 
 import pyoctopus
 import sample_logging
+from pyoctopus import Downloader
 
 sample_logging.setup()
 
@@ -50,5 +51,5 @@ if __name__ == '__main__':
     processors = [
         (pyoctopus.url_matcher(r'.*/explore/all\?order=starred.*'), pyoctopus.extractor(ProjectList, collector=collect))
     ]
-    octopus = pyoctopus.new(processors=processors, sites=sites, threads=4)
+    octopus = pyoctopus.new(downloader=Downloader.CURL_CFFI, processors=processors, sites=sites, threads=4)
     octopus.start(seed)

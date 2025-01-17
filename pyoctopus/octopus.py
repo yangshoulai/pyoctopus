@@ -8,13 +8,14 @@ from concurrent.futures import ThreadPoolExecutor, wait, Future, ALL_COMPLETED
 from enum import Enum
 from urllib.parse import urljoin, urlencode, parse_qs, urlparse
 
+import curl_cffi.requests as curl_cffi
 import requests
 
 from .request import Request, State as RequestState
 from .response import Response
 from .site import Site
 from .store import Store, memory_store
-from .types import Processor, Matcher
+from .types import Processor, Matcher, Downloader
 
 _HEADER_COOKIE = 'Cookie'
 _HEADER_REFERER = 'Referer'
@@ -57,13 +58,14 @@ class State(Enum):
 
 
 class Octopus:
-    def __init__(self, store: Store = None,
+    def __init__(self, downloader: Downloader = Downloader.REQUESTS, store: Store = None,
                  processors: list[tuple[Matcher, Processor]] = None,
                  threads: int = os.cpu_count(),
                  queue_factor: int = 2,
                  sites: list[Site] = None,
                  retries: int = 1,
                  ):
+        self.downloader = downloader or Downloader.REQUESTS
         self._store = store or memory_store()
         self._seeds = []
         self._processors = processors if processors is not None else []
@@ -194,7 +196,7 @@ class Octopus:
             site = self._get_site(urlparse(r.url).hostname)
             if site.limiter is not None:
                 site.limiter.acquire()
-            res = Octopus._download(r, site)
+            res = self._download(r, site)
             if res.status != 200:
                 raise ValueError(f"Bad http status [{res.status}] for [{r}]")
             for [m, p] in self._processors:
@@ -224,8 +226,7 @@ class Octopus:
             else:
                 return False
 
-    @staticmethod
-    def _download(request: Request, site: Site) -> Response:
+    def _download(self, request: Request, site: Site) -> Response:
         try:
             h = {**_DEFAULT_HEADERS, **site.headers, **request.headers}
             p = {}
@@ -234,13 +235,22 @@ class Octopus:
                     'http': site.proxy,
                     'https': site.proxy
                 }
-            r = requests.request(request.method,
-                                 request.url,
-                                 params=request.queries,
-                                 data=request.data,
-                                 headers=h,
-                                 proxies=p,
-                                 timeout=site.timeout)
+            if self.downloader == Downloader.REQUESTS:
+                r = requests.request(request.method,
+                                     request.url,
+                                     params=request.queries,
+                                     data=request.data,
+                                     headers=h,
+                                     proxies=p,
+                                     timeout=site.timeout)
+            else:
+                r = curl_cffi.request(request.method,
+                                      request.url,
+                                      params=request.queries,
+                                      data=request.data,
+                                      headers=h,
+                                      proxies=p,
+                                      timeout=site.timeout)
             _res = Response(request)
             _res.status = r.status_code
             _res.content = r.content
@@ -265,13 +275,14 @@ class Octopus:
             _logger.info(f"Wait for {undone_count} tasks in the queue to complete")
 
 
-def new(store: Store = None,
+def new(downloader: Downloader = Downloader.REQUESTS, store: Store = None,
         processors: list[tuple[Matcher, Processor]] = None,
         threads: int = os.cpu_count(),
         queue_factor: int = 2,
         sites: list[Site] = None,
         retries: int = 1) -> Octopus:
-    return Octopus(store=store,
+    return Octopus(downloader=downloader,
+                   store=store,
                    processors=processors,
                    threads=threads,
                    queue_factor=queue_factor,

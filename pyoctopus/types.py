@@ -1,3 +1,4 @@
+from enum import Enum
 from typing import TypeVar, Callable, Any
 
 from .request import Request
@@ -14,3 +15,8 @@ Processor = TypeVar('Processor', bound=[Callable[[Response], list[Request]]])
 Collector = TypeVar('Collector', bound=[Callable[[R], None]])
 
 Terminable = TypeVar('Terminable', bound=[Callable[[R, str, Response], bool]])
+
+
+class Downloader(Enum):
+    REQUESTS = 'requests',
+    CURL_CFFI = 'curl_cffi'
