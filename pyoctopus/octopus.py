@@ -250,7 +250,8 @@ class Octopus:
                                       data=request.data,
                                       headers=h,
                                       proxies=p,
-                                      timeout=site.timeout)
+                                      timeout=site.timeout,
+                                      impersonate="chrome")
             _res = Response(request)
             _res.status = r.status_code
             _res.content = r.content
