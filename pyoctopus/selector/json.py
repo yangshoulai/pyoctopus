@@ -1,8 +1,10 @@
+import json as j
+
+from jsonpath_ng import parse
+
 from .selector import Selector
 from .. import Response
 from ..types import Converter
-import json as j
-from jsonpath_ng import parse
 
 
 class Json(Selector):
@@ -25,7 +27,7 @@ class Json(Selector):
 
     def do_select(self, content: str, resp: Response) -> list[str]:
         matches = parse(self.expr).find(j.loads(content))
-        return [str(x.value) if x.value is not None else '' for x in matches]
+        return [j.dumps(x.value) if x.value is not None else '' for x in matches]
 
 
 def new(expr: str,
