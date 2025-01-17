@@ -26,12 +26,12 @@ def url_matcher(regex: str) -> Matcher:
 
 
 def content_type_matcher(regex: str) -> Matcher:
-    return header_matcher('Content-Type', regex)
+    return header_matcher('content-type', regex)
 
 
 def header_matcher(header: str, regex: str) -> Matcher:
     r = re.compile(regex)
-    return lambda res: bool(r.match(res.headers.get(header, '')))
+    return lambda res: bool(r.match(res.headers.get(header.lower(), '')))
 
 
 ALL: Matcher = lambda res: True

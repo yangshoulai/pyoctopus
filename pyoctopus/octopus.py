@@ -255,7 +255,7 @@ class Octopus:
             _res = Response(request)
             _res.status = r.status_code
             _res.content = r.content
-            _res.headers = {k: v for k, v in r.headers.items()}
+            _res.headers = {k.lower(): v for k, v in r.headers.items()}
             _res.encoding = r.encoding or site.encoding or 'utf-8'
             return _res
         except BaseException as e:
