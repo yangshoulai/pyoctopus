@@ -23,7 +23,8 @@ class Xpath(Selector):
                                     converter=converter)
 
     def do_select(self, content: str, resp: Response) -> list[str]:
-        return [html.tostring(x, encoding=resp.encoding) if isinstance(x, html.HtmlElement) else str(x) for x in
+        return [html.tostring(x, encoding=resp.encoding).decode() if isinstance(x, html.HtmlElement) else str(x) for x
+                in
                 html.fromstring(content).xpath(self.expr)]
 
 
