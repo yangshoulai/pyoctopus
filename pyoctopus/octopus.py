@@ -11,22 +11,24 @@ from urllib.parse import urljoin, urlencode, parse_qs, urlparse
 import curl_cffi.requests as curl_cffi
 import requests
 
+from .downloader import requests_downloader
+
 from .request import Request, State as RequestState
 from .response import Response
 from .site import Site
 from .store import Store, memory_store
 from .types import Processor, Matcher, Downloader
 
-_HEADER_COOKIE = 'Cookie'
-_HEADER_REFERER = 'Referer'
-_HEADER_UA = 'User-Agent'
+_HEADER_COOKIE = "Cookie"
+_HEADER_REFERER = "Referer"
+_HEADER_UA = "User-Agent"
 _DEFAULT_HEADERS = {
-    _HEADER_UA: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
+    _HEADER_UA: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36"
 }
 
-_REGEX_REFERER = re.compile(r'^(https?://([^/]+)).*$')
+_REGEX_REFERER = re.compile(r"^(https?://([^/]+)).*$")
 
-_logger = logging.getLogger('pyoctopus')
+_logger = logging.getLogger("pyoctopus")
 
 
 def _generate_request_id(r: Request) -> str:
@@ -39,13 +41,12 @@ def _generate_request_id(r: Request) -> str:
             q.extend(v if v else [])
             q = sorted(q)
             existing_params[k] = q
-    url = parsed_url._replace(query=urlencode(
-        sorted(existing_params.items()), doseq=True)).geturl()
+    url = parsed_url._replace(query=urlencode(sorted(existing_params.items()), doseq=True)).geturl()
     if r.data:
-        url = f'{url}&{r.data}'
-    url = f'{r.method}{url}'
+        url = f"{url}&{r.data}"
+    url = f"{r.method}{url}"
     md5 = hashlib.md5()
-    md5.update(url.encode('utf-8'))
+    md5.update(url.encode("utf-8"))
     return md5.hexdigest()
 
 
@@ -58,14 +59,18 @@ class State(Enum):
 
 
 class Octopus:
-    def __init__(self, downloader: Downloader = Downloader.REQUESTS, store: Store = None,
-                 processors: list[tuple[Matcher, Processor]] = None,
-                 threads: int = os.cpu_count(),
-                 queue_factor: int = 2,
-                 sites: list[Site] = None,
-                 retries: int = 1,
-                 ):
-        self.downloader = downloader or Downloader.REQUESTS
+    def __init__(
+        self,
+        downloader: Downloader = None,
+        store: Store = None,
+        processors: list[tuple[Matcher, Processor]] = None,
+        threads: int = os.cpu_count(),
+        queue_factor: int = 2,
+        sites: list[Site] = None,
+        retries: int = 1,
+        ignore_seed_when_has_waiting_requests: bool = False,
+    ):
+        self.downloader = downloader or requests_downloader
         self._store = store or memory_store()
         self._seeds = []
         self._processors = processors if processors is not None else []
@@ -74,6 +79,7 @@ class Octopus:
         if sites:
             self._sites = {s.host: s for s in sites}
         self.retries = retries
+        self._ignore_seed_when_has_waiting_requests = ignore_seed_when_has_waiting_requests
         self._lock = threading.Lock()
         self._semaphore = threading.Semaphore(self._queue_factor * self._threads)
         self._workers = None
@@ -87,9 +93,10 @@ class Octopus:
         if not self._set_state(State.STARTING, State.INIT):
             raise RuntimeError("Pyoctopus is not in INIT state")
         self._state = State.STARTING
-        self._seeds.extend([Request(s) if isinstance(s, str) else s for s in seeds])
-        for seed in self._seeds:
-            self._add(seed)
+        if not self._ignore_seed_when_has_waiting_requests or not self._store.has_waiting_requests():
+            self._seeds.extend([Request(s) if isinstance(s, str) else s for s in seeds])
+            for seed in self._seeds:
+                self._add(seed)
         self._boss = ThreadPoolExecutor(max_workers=1, thread_name_prefix="boss")
         self._workers = ThreadPoolExecutor(max_workers=self._threads, thread_name_prefix="worker")
         self._boss_future = self._boss.submit(self._dispatch)
@@ -109,7 +116,8 @@ class Octopus:
         self._state = State.STOPPED
         stat = self._store.get_statistics()
         _logger.info(
-            f"Pyoctopus stats: all = {stat[0]}, waiting = {stat[1]}, executing = {stat[2]}, completed = {stat[3]}, failed = {stat[4]}")
+            f"Pyoctopus stats: all = {stat[0]}, waiting = {stat[1]}, executing = {stat[2]}, completed = {stat[3]}, failed = {stat[4]}"
+        )
         _logger.info("Pyoctopus stopped")
 
     def add(self, r: Request) -> None:
@@ -129,11 +137,11 @@ class Octopus:
                 m = _REGEX_REFERER.match(p.url)
                 if m is not None:
                     r.headers[_HEADER_REFERER] = m.group(1)
-            if not r.url.startswith('http'):
+            if not r.url.startswith("http"):
                 r.url = urljoin(p.url, r.url)
         r.id = _generate_request_id(r)
         r.state = RequestState.WAITING
-        r.msg = '等待处理'
+        r.msg = "等待处理"
 
         def _r():
             if r.repeatable or not self._store.exists(r.id):
@@ -203,9 +211,9 @@ class Octopus:
                 if m and m(res):
                     for req in p(res):
                         self._add(req, r)
-            r.msg = '成功处理'
+            r.msg = "成功处理"
             r.state = RequestState.COMPLETED
-            self._queue.put(lambda: self._store.update_state(r, RequestState.COMPLETED, '成功处理'))
+            self._queue.put(lambda: self._store.update_state(r, RequestState.COMPLETED, "成功处理"))
         except BaseException as e:
             r.msg = str(e)
             r.state = RequestState.FAILED
@@ -228,36 +236,7 @@ class Octopus:
 
     def _download(self, request: Request, site: Site) -> Response:
         try:
-            h = {**_DEFAULT_HEADERS, **site.headers, **request.headers}
-            p = {}
-            if site.proxy:
-                p = {
-                    'http': site.proxy,
-                    'https': site.proxy
-                }
-            if self.downloader == Downloader.REQUESTS:
-                r = requests.request(request.method,
-                                     request.url,
-                                     params=request.queries,
-                                     data=request.data,
-                                     headers=h,
-                                     proxies=p,
-                                     timeout=site.timeout)
-            else:
-                r = curl_cffi.request(request.method,
-                                      request.url,
-                                      params=request.queries,
-                                      data=request.data,
-                                      headers=h,
-                                      proxies=p,
-                                      timeout=site.timeout,
-                                      impersonate="chrome")
-            _res = Response(request)
-            _res.status = r.status_code
-            _res.content = r.content
-            _res.headers = {k.lower(): v for k, v in r.headers.items()}
-            _res.encoding = r.encoding or site.encoding or 'utf-8'
-            return _res
+            return self.downloader(request, site)
         except BaseException as e:
             raise RuntimeError(str(e))
 
@@ -270,22 +249,28 @@ class Octopus:
         return Site(host)
 
     def _log_undone_tasks(self):
-        undone_count = len(
-            [x for x in [self._boss_future, *self._workers_futures] if not x.done()])
+        undone_count = len([x for x in [self._boss_future, *self._workers_futures] if not x.done()])
         if undone_count > 0:
             _logger.info(f"Wait for {undone_count} tasks in the queue to complete")
 
 
-def new(downloader: Downloader = Downloader.REQUESTS, store: Store = None,
-        processors: list[tuple[Matcher, Processor]] = None,
-        threads: int = os.cpu_count(),
-        queue_factor: int = 2,
-        sites: list[Site] = None,
-        retries: int = 1) -> Octopus:
-    return Octopus(downloader=downloader,
-                   store=store,
-                   processors=processors,
-                   threads=threads,
-                   queue_factor=queue_factor,
-                   sites=sites,
-                   retries=retries)
+def new(
+    downloader: Downloader = None,
+    store: Store = None,
+    processors: list[tuple[Matcher, Processor]] = None,
+    threads: int = os.cpu_count(),
+    queue_factor: int = 2,
+    sites: list[Site] = None,
+    retries: int = 1,
+    ignore_seed_when_has_waiting_requests: bool = False,
+) -> Octopus:
+    return Octopus(
+        downloader=downloader,
+        store=store,
+        processors=processors,
+        threads=threads,
+        queue_factor=queue_factor,
+        sites=sites,
+        retries=retries,
+        ignore_seed_when_has_waiting_requests=ignore_seed_when_has_waiting_requests,
+    )

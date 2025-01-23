@@ -26,5 +26,9 @@ class Store:
         pass
 
     @abstractmethod
-    def get_statistics(self) -> (int, int, int, int, int):
+    def get_statistics(self) -> tuple[int, int, int, int, int]:
+        pass
+
+    @abstractmethod
+    def has_waiting_requests(self) -> bool:
         pass

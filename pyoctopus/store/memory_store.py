@@ -32,7 +32,7 @@ class _MemoryStore(Store):
             req = self._all[r.id] if r else None
             if req:
                 req.state = State.EXECUTING
-                req.msg = '正在处理'
+                req.msg = "正在处理"
                 self._executing.add(r.id)
             return req
         except queue.Empty:
@@ -53,7 +53,7 @@ class _MemoryStore(Store):
             self._fails.discard(r.id)
             self._queue.put(_Wrapper(r.id, r.priority))
         else:
-            raise ValueError(f'Invalid state: {state}')
+            raise ValueError(f"Invalid state: {state}")
 
     def exists(self, id: str) -> bool:
         return id in self._all
@@ -62,12 +62,15 @@ class _MemoryStore(Store):
         fails = [self._all[f] for f in self._fails]
         for fail in fails:
             fail.state = State.WAITING
-            fail.msg = '等待处理'
-            self.update_state(fail, State.WAITING, '等待处理')
+            fail.msg = "等待处理"
+            self.update_state(fail, State.WAITING, "等待处理")
         return len(fails)
 
-    def get_statistics(self) -> (int, int, int, int, int):
+    def get_statistics(self) -> tuple[int, int, int, int, int]:
         return len(self._all), self._queue.qsize(), len(self._executing), len(self._completed), len(self._fails)
+
+    def has_waiting_requests(self) -> bool:
+        return self._queue.qsize() > 0 or len(self._executing) > 0
 
 
 def new() -> Store:
