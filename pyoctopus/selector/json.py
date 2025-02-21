@@ -24,9 +24,10 @@ class Json(Selector):
                                    filter_empty=filter_empty,
                                    format_str=format_str,
                                    converter=converter)
+        self._parser = parse(self.expr)
 
     def do_select(self, content: str, resp: Response) -> list[str]:
-        matches = parse(self.expr).find(j.loads(content))
+        matches = self._parser.find(j.loads(content))
         return [(x.value if isinstance(x.value, str) else j.dumps(x.value)) if x.value is not None else '' for x in
                 matches]
 
