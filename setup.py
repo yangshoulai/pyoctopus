@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="pyoctopus",  # 库的名称
-    version="0.2.1",  # 库的版本
+    version="0.2.2",  # 库的版本
     packages=find_packages(),  # 自动查找并包含所有模块
     install_requires=[  # 项目的依赖包
         "Requests",

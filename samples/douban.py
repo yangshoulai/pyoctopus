@@ -15,10 +15,14 @@ class MovieActor:
         return f"{self.name}({self.id})"
 
 
-@pyoctopus.hyperlink(pyoctopus.link(pyoctopus.css('.item div.hd > a', multi=True, attr='href'), repeatable=False),
-                     pyoctopus.link(pyoctopus.css('span.next a', attr='href'), repeatable=False))
-class DoubanMovie:
+@pyoctopus.hyperlink(
+    pyoctopus.link(pyoctopus.css('span.next a', attr='href'), repeatable=False))
+class DoubanMovieParent:
     name = pyoctopus.xpath('//h1/span[1]/text()')
+
+
+@pyoctopus.hyperlink(pyoctopus.link(pyoctopus.css('.item div.hd > a', multi=True, attr='href'), repeatable=False))
+class DoubanMovie(DoubanMovieParent):
     score = pyoctopus.xpath('//strong[@class="ll rating_num"]/text()', converter=pyoctopus.float_converter())
     directors = pyoctopus.xpath('//a[@rel="v:directedBy"]/text()', multi=True)
     writers = pyoctopus.xpath("//span[text()='编剧']/../span[@class='attrs']/a/text()", multi=True)

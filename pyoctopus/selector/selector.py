@@ -1,13 +1,38 @@
 import logging
 from abc import abstractmethod
-from typing import List
+from typing import List, Any
 
 from .. import Request, Response
-from ..types import Converter
+from ..types import Converter, Terminable
 from ..types import R
 
 PROP_LINKS = '__result_links__'
 _logger = logging.getLogger('pyoctopus.selector')
+
+
+class Link:
+    def __init__(self,
+                 selector: 'Selector',
+                 method: str = 'GET',
+                 *,
+                 queries: dict[str, list[str]] = None,
+                 data: str = None,
+                 headers: dict[str, str] = None,
+                 priority: int = 0,
+                 repeatable: bool = True,
+                 attr_props: list[str] = None,
+                 inherit: bool = False,
+                 terminable: Terminable = None):
+        self.selector = selector
+        self.method = method
+        self.queries = {} if queries is None else queries
+        self.data = data
+        self.headers = {} if headers is None else headers
+        self.priority = priority
+        self.repeatable = repeatable
+        self.attr_props = attr_props
+        self.inherit = inherit
+        self.terminable = terminable
 
 
 class Selector:
@@ -100,42 +125,89 @@ def embedded(selector: Selector, embedded_class: type[R], *args, **kwargs) -> Em
     return Embedded(selector, embedded_class, *args, **kwargs)
 
 
+def _get_type_selectors_links(cls: type) -> (dict[str, Selector | Embedded], List[Any]):
+    selectors = {}
+    links = []
+    for t in [*cls.__bases__, cls]:
+        for k, v in t.__dict__.items():
+            if isinstance(v, Selector) or isinstance(v, Embedded):
+                selectors[k] = v
+        links.extend(_get_links(t))
+    return selectors, links
+
+
 def select(content: str, resp: Response, result_class: type, links: list[Request] = None, *args, **kwargs) -> (
         R, list[Request]):
     r = result_class(*args, **kwargs)
+    _selectors, _links = _get_type_selectors_links(type(r))
     if links is None:
         links = []
-    for key, value in type(r).__dict__.items():
+    for key, value in _selectors.items():
         if isinstance(value, Selector):
             r.__dict__[key] = value.select(content, resp)
         elif isinstance(value, Embedded):
             r.__dict__[key] = value.select(content, resp, links)
 
-    if PROP_LINKS in r.__dict__:
-        for link in r.__dict__[PROP_LINKS]:
-            if link.terminable and link.terminable(r, content, resp):
-                continue
-            requests = []
-            l = link.selector.select(content, resp)
-            if l:
-                if isinstance(l, list):
-                    requests.extend(l)
-                else:
-                    requests.append(l)
-                new_requests = [Request(x,
-                                        link.method,
-                                        queries=link.queries,
-                                        data=link.data,
-                                        headers=link.headers,
-                                        priority=link.priority,
-                                        repeatable=link.repeatable,
-                                        inherit=link.inherit) for x in requests]
-                if link.attr_props:
-                    for attr_prop in link.attr_props:
-                        if attr_prop in r.__dict__:
-                            for new_request in new_requests:
-                                new_request.set_attr(attr_prop, r.__dict__[attr_prop])
+    for link in _links:
+        if link.terminable and link.terminable(r, content, resp):
+            continue
+        requests = []
+        l = link.selector.select(content, resp)
+        if l:
+            if isinstance(l, list):
+                requests.extend(l)
+            else:
+                requests.append(l)
+            new_requests = [Request(x,
+                                    link.method,
+                                    queries=link.queries,
+                                    data=link.data,
+                                    headers=link.headers,
+                                    priority=link.priority,
+                                    repeatable=link.repeatable,
+                                    inherit=link.inherit) for x in requests]
+            if link.attr_props:
+                for attr_prop in link.attr_props:
+                    if attr_prop in r.__dict__:
+                        for new_request in new_requests:
+                            new_request.set_attr(attr_prop, r.__dict__[attr_prop])
 
-                links.extend(new_requests)
-        del r.__dict__[PROP_LINKS]
+            links.extend(new_requests)
     return r, links
+
+
+def link(selector: Selector, method: str = 'GET',
+         *,
+         queries: dict[str, list[str]] = None,
+         data: str = None,
+         headers: dict[str, str] = None,
+         priority: int = 0,
+         repeatable: bool = True,
+         attr_props: list[str] = None,
+         inherit: bool = False,
+         terminable: Terminable = None) -> Link:
+    return Link(selector,
+                method,
+                queries=queries,
+                data=data,
+                headers=headers,
+                priority=priority,
+                repeatable=repeatable,
+                attr_props=attr_props,
+                inherit=inherit,
+                terminable=terminable)
+
+
+_LINKS: dict[type, list[Link]] = {}
+
+
+def _get_links(cls: type) -> list[Link]:
+    return _LINKS.get(cls, [])
+
+
+def hyperlink(*links: Link):
+    def decorator(cls):
+        _LINKS[cls] = [*links]
+        return cls
+
+    return decorator
