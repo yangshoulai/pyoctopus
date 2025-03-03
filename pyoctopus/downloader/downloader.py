@@ -1,4 +1,4 @@
-import curl_cffi
+from curl_cffi import requests as curl_cffi
 import requests
 from ..request import Request
 from ..response import Response

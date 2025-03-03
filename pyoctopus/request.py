@@ -1,6 +1,6 @@
 import json
 from enum import Enum
-from typing import Any
+from typing import Any, Literal
 
 
 class State(Enum):
@@ -12,7 +12,7 @@ class State(Enum):
 
 
 class Request:
-    def __init__(self, url: str, method: str = 'GET',
+    def __init__(self, url: str, method: Literal['GET', 'POST'] = 'GET',
                  *,
                  queries: dict[str, list[Any] | Any] = None,
                  data: str = None,
@@ -100,7 +100,7 @@ class Request:
     __repr__ = __str__
 
 
-def new(url: str, method: str = 'GET',
+def new(url: str, method: Literal['GET', 'POST'] = 'GET',
         *,
         queries: dict[str, list[Any] | Any] = None,
         data: str = None,
